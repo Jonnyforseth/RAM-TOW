@@ -1,0 +1,205 @@
+POWERTRAINS Ram 2500 (4x2/4x4) 	Ram 3500 (4x2/4x4)
+Engine/Trans
+Rear
+Wheels
+Axle
+Ratio 	GVWR 	GCWR
+Regular Cab 	Crew Cab 	Mega Cab® Regular Cab 	Crew Cab 	Mega Cab®
+8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed
+6.4L HEMI® V8/
+8HP75-LCV
+SRW 	4.10 	8,565 	18,000 NA/10,530 (Pow-
+er Wagon)
+SRW 	3.73 	9,900 	22,050 	15,540/15,220 	15,210/14,920 	15,070/14,730
+SRW 	3.73 	10,000 	22,050 	15,540/15,240 	15,220/14,930 	15,080/14,720
+SRW 	3.73 	11,040*/11,040 	22,050 	NA/15,150 	NA/14,580 	15,490/15,100 	15,100/14,770
+SRW 	3.73 	11,150/11,440 	22,000 	14,930/14,560
+SRW 	4.10 	9,900 	24,250 	17,740/17,420 	17,410/17,120 	17,270/16,930
+SRW 	4.10 	10,000 	24,250 	17,570/17,440 	17,420/17,130 	17,280/16,920
+SRW 	4.10 	11,040 	24,250 	NA/17,350 	17,730/17,330 	17,340/17,010
+SRW 	4.10 	11,150/11,440 	24,240 	17,170/16,800
+DRW 	3.73 	14,000 	22,600 	15,750/15,360 	15,150/14,800
+DRW 	4.10 	14,000 	25,000 	18,150/17,760 	17,550/17,200
+6.7L
+CUMMINS I6
+HIGH-OUTPUT
+TURBO DIESEL/
+ZF POWERLINE
+8-SPEED
+AUTOMATIC
+SRW 	3.42 	9,900 	24,290 	NA/14,630
+SRW 	3.42 	10,000 	24,290 	NA/15,380
+SRW 	3.42 	11,040* 	24,290 	NA/15,710
+SRW 	3.42 	9,900 	26,580 	NA/17,080
+SRW 	3.42 	10,000/10,190 	26,580 	NA/18,230
+SRW 	3.42 	11,040* 	26,580 	NA/18,230
+SRW 	3.42 	9,900 	28,110 	NA/18,820
+SRW 	3.42
+9,900/
+10,000/
+10,190
+27,820 	NA/19,900
+SRW 	3.42 	11,040* 	27,820 	NA/19,930
+SRW 	3.42
+9,900/
+10,000/
+10,190/
+11,040*
+27,870 	19,960/NA
+SRW 	3.42 	10,000 	28,110 	NA/19,770
+SRW 	3.42 	11,040* 	28,110 	NA/19,890
+SRW 	3.42 	9,900 	28,010 	19,980/NA
+SRW 	3.42
+10,000/
+10,190 /
+11,040*
+28,010 	20,000/NA
+SRW 	3.42 	10,190 	28,110 	NA/19,890
+SRW 	3.42 	11,500 	31,850 	23,950/NA
+SRW 	3.42 	11,800 	31,820 	NA/23,550
+SRW 	3.42 	11,830 	34,000 	NA/26,080
+SRW 	3.42 	12,000 	33,530 	25,490/NA
+SRW 	3.42 	12,300 	32,720 	NA/ 24,080
+SRW 	3.42 	12,300 	33,610 	NA/25,180
+DRW 	3.42 	14,000 	42,800 	NA/33,890
+DRW 	3.42 	14,000 	41,950 	NA/ 32,890
+DRW 	3.42 	14,000 	43,040 	34,490/NA
+DRW 	3.42 	14,000 	45,000 	NA/36,610
+Ram 2500 (4x2/4x4) 	Ram 3500 (4x2/4x4)
+Engine/Trans
+Rear
+Wheels 	GVWR
+Regular Cab 	Crew Cab 	Mega Cab® Regular Cab 	Crew Cab 	Mega Cab®
+8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed 	8' Bed 	6' 4" Bed
+6.4L HEMI® V8/
+8HP75-LCV
+SRW 	8,565 	NA/1,570 (Power
+Automatic Transmission
+SRW 	9,900 	3,830/3,510 	3,500/3,210 	3,360/3,020
+SRW 	10,000 	3,930/3,630 	3,610/3,320 	3,470/3,110
+SRW 	11,040 	NA/4,580 	NA/4,010 	4,970/4,580 	4,580/4,250
+SRW 	11,150/11,440 	4,520/4,440
+DRW 	14,000 	7,590/7,200 	6,990/6,640
+6.7L CUMMINS I6
+HIGH-OUTPUT
+TURBO DIESEL/
+ZF POWERLINE
+8-SPEED
+AUTOMATIC
+SRW 	9,900 	NA/2,450 	2,460/2,170 	2,350/2,010 	NA/1,790
+SRW 	10,000 	NA/2,550 	2,560/2,260 	2,460/2,120 	NA/1,860
+SRW 	11,500/11,800 	NA/3,970
+SRW 	11,040* 	NA/3,590 	3,600/3,300 	3,500/3,160 	NA/2,900
+SRW 	11,500/11,830 	NA/4,350 	4,040/NA
+SRW 	12,000/12,300 	4,400/4,310 	NA/4,100
+DRW 	14,000 	NA/6,050 	5,890/5,530 	NA/5,380
+©2025 FCA US LLC. All Rights Reserved. Ram and HEMI are registered trademarks of FCA US LLC.”
+1Visit Mopar.com for complete details and a copy of the Powertrain Limited Warranty.
+2Class based on 250/2500 and 350/3500 Pickups and the latest available competitive information.
+3This system is a driver’s convenience system, not a substitute for active driver involvement. The driver must remain aware of traffic conditions and be prepared to use the brakes to avoid collisions.
+4This system is an alert system for the front of the vehicle. It is not a substitute for active driver involvement. The driver must remain aware of traffic conditions and be prepared to use brakes to avoid collisions.
+5Always check visually for vehicles prior to changing lanes.
+6Always check entire surroundings visually before proceeding.
+7Always look before proceeding. An electronic drive aid is not a substitute for conscientious driving. Always be aware of your surroundings.
+8This system is a driver's convenience system, not a substitute for active driver involvement. The driver must remain aware of traffic conditions and maintain control of the vehicle.
+9Based on standard and available features offered.
+10When properly equipped. All weights given in pounds and rounded to the nearest 10 lb. Trailer Weight and Payload Rating are mutually exclusive. GAWRs, GVWRs and GCWRs should never be exceeded. The recommended tongue weight for a conventional hitch is 10 percent of the gross trailer weight. The maximum tongue weight for Ram 2500 (4x2/4x4) Class V (receiver hitch) is limited
+to 2,000 lb., for Ram 3500 (4x2/4x4) Class V (receiver hitch) is limited to 2,300 lb. For gooseneck and 5th-wheel trailers, the tongue weight should never exceed any of the manufacturer recommendations including but not limited to payload and GAWR. For Ram 2500 (4x2/4x4)A 5th-wheel or gooseneck hitch is required for trailers over 20,000 lb. For Ram 3500 (4x2/4x4)A 5th-wheel or
+gooseneck hitch is required for trailers over 23,000 lb. Trailer Weight Rating and Tow Vehicle Trailering Weight are calculated as specified in SAE J2807: Passenger Weight = 300 lb, Options Weight = 100 lb, Trailering Equipment Weight = 75 lb for conventional hitch, 40 lb for gooseneck and 250 lb for 5th-wheel.
+Maximum Trailer Weight
+Capacities10 – SAE J2807 Compliant
+ENHANCED TECHNOLOGY
+• 	Available Digital Rearview Mirror 3.0 (DRVM 3.0) with side
+camera integration
+• 	Available Trailer Reverse Steering Control and Trailer-Tow Pages
+Smartphone Application for comprehensive trailer monitoring and
+control
+• 	Standard Manual Telescoping Trailer-Tow Mirrors with available
+Power Telescoping, auto-dim, auto-fold and heated-convex features
+• 	Available on-board power – 2.4kW inverter in pickup bed with two
+110-volt power outlets to power tools, audio gear or home appliances
+• 	Available Class-Exclusive 10.25” front passenger display2 – gives
+passenger the power to control navigation, information and
+entertainment options
+SAFETY AND SECURITY FEATURES
+• 	Standard Adaptive Cruise Control3 (ACC) and Forward Collision
+Warning Plus4 with auto emergency braking4 (AEB)
+• 	Standard Trailer Brake Control
+• 	Available Blind Spot Monitoring5 with trailer coverage and Rear Cross
+Path Detection6
+• 	Available ParkSense® Front and Rear Park Assist System7
+• 	Available Lane Keep Assist8 with Adaptive Steering
+• 	Center High Mounted Stop Lamp CHMSL) Camera Relocation Kit -
+Allows for the relocation of the CHMSL camera when and upfit or
+truck cap blocks the camera view
+• 	Most advanced Ram Heavy Duty pickups ever9
+Automatic Transmission
+6.4L HEMI® V8 WITH FUEL SAVER TECHNOLOGY
+• 	405 hp/429 lb-ft of torque (6.4L HEMI® V8 with 8HP75-LCV 8-speed
+automatic)
+• 	8-speed 8HP75-LCV automatic with software controls to improve
+refinement
+– On-the-fly shift mapping with more than 40 individual maps to
+optimize shift quality/points regardless of load or conditions
+– Electronic Column Shifter on all configurations — preferred shifting
+method for commercial applications including snowplows and first
+responders
+• 	Multiple Displacement System (MDS) fuel saver cylinder-deactivation
+technology
+• 	Variable Cam Timing (VCT) helps deliver more consistent power across a
+wide torque band with greater fuel efficiency
+• 	Interactive Deceleration Fuel Shut Off feature (iDFSO) expands
+opportunities for turning off fuel to the engine during deceleration
+• 	5-Year/60,000-Mile Powertrain Limited Warranty1
+6.7L CUMMINS I6 HIGH-OUTPUT TURBO DIESEL
+• 	6.7L Cummins Turbo Diesel High-Output version paired exclusively
+with the TorqueFlite HD 8-speed automatic transmission
+– 430 hp (+10)/1,075 lb-ft of torque
+– Improves 2500 diesel and 3500 diesel standard output hp by 60 and
+225 lb-ft of torque
+– Outstanding towing and hauling capability
+• 	TorqueFlite HD 8-speed automatic transmission with high output
+capability
+– Specifically selected to handle the tremendous power output of the
+Cummins High-Output Turbo Diesel
+– Supports second gear takeoffs for smoother starts (vehicle senses
+load and automatically selects first or second gear for takeoff)
+• 	5-Year/100,000-Mile Powertrain Limited Warranty1
+Maximum Payload Capacities10
+360-DEGREE SURROUND VIEW CAMERA AVAILABLE
+• 	Multiple view options from five cameras include front, rear, composite 360-degree and cross path views6
+• 	Gives the driver a complete picture of the surrounding area, with both sides of the trailer displayed onscreen
+• 	Trailer Reverse Guidance and the cargo view camera6 also included
+FIFTH-WHEEL/GOOSENECK TOW PREP GROUP AVAILABLE
+• 	Fully integrated factory-installed provisions for 5th-wheel/gooseneck mounts
+• 	Additional 7-pin wiring harness in the bed and 12-pin connector with auxiliary Mopar® camera
+• 	Engineered for the vehicle’s structure
+• 	Available fifth-wheel/cargo view camera6
+* Applies to vehicles produced with sales code Z2K/Z7G/Z3Y
+2026 RAM HEAVY DUTY
+PAYLOAD & TOWINGW E I G H T 	C A P A C I T I E S
+BEST-IN-CLASS FEATURES2
+• 	The 2026 Ram 2500/3500 Crew Cab pickups offer Best-in-Class available fuel tank capacity
+• 	The 2026 Ram 2500/3500 pickups offer Best-in-Class available base diesel torque (1075 lb-ft)
+• 	The 2026 Ram 2500/3500 pickups offer Best-in-Class available on-board power (2.4kW)
+• 	The 2026 Ram 2500/3500 pickups offer Best-in-Class available 14.5-inch infotainment touchscreen
+CLASS-EXCLUSIVE2
+• 	The 2026 Ram 2500 Offers Class-Exclusive coil link rear suspension
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive available Auto-Level Rear Air Suspension
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive available RamBox Cargo Management System
+• 	The 2026 Ram 2500/3500 Crew Cab pickups offer Class-Exclusive available rear in-floor storage
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive available power convex trailer tow mirrors
+• 	The 2026 Ram 2500/3500 Mega Cab pickups offer Class-Exclusive forward fold-flat rear seat
+• 	The 2026 Ram 2500 Power Wagon offers Class-Exclusive electronic locking front differential
+• 	The 2026 Ram 2500 Power Wagon offers Class-Exclusive electronic front sway bar disconnect
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive available 10.25-inch front passenger
+interactive display
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive available dual wireless charging pads
+• 	The 2026 Ram 2500/3500 pickups offer Class-Exclusive standard Adaptive Cruise Control
+• 	The 2026 Ram 3500/4500/5500 Chassis Cabs offer Class-Exclusive active grille shutters
+• 	The 2026 Ram 3500/4500/5500 Chassis Cabs offer Class-Exclusive available Traffic Sign Recognition6
+• 	The 2026 Ram 3500/4500/5500 Chassis Cabs offer Class-Exclusive available Drowsy Driver Detection5
+KEY FEATURES
+
+-- 1 of 1 --
+

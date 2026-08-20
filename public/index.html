@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RAM Towing Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <h1>RAM TOWING CALCULATOR</h1>
+      </header>
+
+      <main class="grid">
+        <section class="card card-primary">
+          <div class="card-head">
+            <h2>VIN LOOKUP</h2>
+          </div>
+
+          <form id="vin-form" class="stack">
+            <label class="field">
+              <span>VIN</span>
+              <div class="inline-field">
+                <input id="vin-input" name="vin" type="text" maxlength="17" placeholder="1C6SRFFT5TN229615" autocomplete="off">
+                <button type="submit" class="button button-primary">Run VIN</button>
+              </div>
+            </label>
+          </form>
+
+          <div id="vin-status" class="status hidden"></div>
+
+          <div id="vin-results" class="results hidden">
+            <div class="result-two-up">
+              <article class="metric-card">
+                <p class="metric-label">Tow Capacity</p>
+                <strong id="tow-capacity">-</strong>
+                <div id="tow-detail" class="metric-detail"></div>
+              </article>
+
+              <article class="metric-card">
+                <p class="metric-label">Max Payload</p>
+                <strong id="payload-capacity">-</strong>
+                <div id="payload-detail" class="metric-detail"></div>
+              </article>
+            </div>
+
+            <div class="result-block">
+              <div class="result-heading">
+                <h3>Detected truck setup</h3>
+                <a id="sticker-link" href="#" target="_blank" rel="noreferrer">Open sticker PDF</a>
+              </div>
+              <div id="detected-pills" class="pill-row"></div>
+            </div>
+
+            <div class="result-block">
+              <h3>Alternate chart matches</h3>
+              <div id="alternate-matches" class="alternate-grid"></div>
+            </div>
+
+            <div class="result-block">
+              <h3>Chart references</h3>
+              <div id="chart-hints" class="hint-list"></div>
+            </div>
+
+            <div class="result-block">
+              <div class="result-heading">
+                <h3>Manual overrides</h3>
+                <button id="apply-overrides" type="button" class="button button-secondary">Re-run match</button>
+              </div>
+              <div id="override-grid" class="override-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>What trailer are you pulling?</h2>
+          </div>
+
+          <form id="reverse-form" class="stack">
+            <div class="field-grid">
+              <label class="field">
+                <span>Trailer Weight</span>
+                <input id="trailer-weight" type="number" min="0" step="10" placeholder="9500">
+              </label>
+              <label class="field">
+                <span>Tongue Weight</span>
+                <input id="tongue-weight" type="number" min="0" step="10" placeholder="950">
+              </label>
+            </div>
+            <label class="field">
+              <span>Truck Size Filter</span>
+              <select id="model-preference">
+                <option value="">Any RAM truck</option>
+                <option value="1500">1500 only</option>
+                <option value="2500">2500 only</option>
+                <option value="3500">3500 only</option>
+              </select>
+            </label>
+            <button type="submit" class="button button-primary">Find Matching Trucks</button>
+            <p class="microcopy">Results are paired to Perkins Motors inventory, sorted from lowest current price to highest current price, with repeat trims limited so the list stays clean.</p>
+          </form>
+
+          <div id="reverse-status" class="status hidden"></div>
+          <div id="reverse-results" class="alternate-grid hidden"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="override-template">
+      <label class="field">
+        <span></span>
+        <select></select>
+      </label>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

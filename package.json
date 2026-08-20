@@ -1,0 +1,17 @@
+{
+  "name": "ram-tow",
+  "version": "1.0.0",
+  "description": "Local RAM towing and payload lookup site",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "pdf-parse": "^2.4.5"
+  }
+}
