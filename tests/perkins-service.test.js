@@ -3,12 +3,60 @@ const assert = require('node:assert/strict');
 
 const {
   applyVerifiedCapacities,
+  buildFilteredInventoryUrl,
   buildCandidateProfile,
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
 } = require('../src/lib/perkins-service');
+
+test('buildFilteredInventoryUrl keeps a VIN setup in Perkins filters and adds VIN UTM attribution', () => {
+  const inventoryLink = buildFilteredInventoryUrl(
+    {
+      model: '2500',
+      engine: '6.4L HEMI V8',
+      drive: '4x4',
+      cab: 'Crew',
+      bed: `6'4"`,
+    },
+    {
+      baseUrl: 'https://perkinsmotors.com/sale/ram-2500-colorado-springs-co',
+      engines: ['6.4L V8'],
+      drivetrains: ['4X4'],
+      cabs: ['Crew Cab'],
+      wheelbases: ['149', '169'],
+    },
+    { campaign: 'vin_lookup', context: 'vin_lookup' }
+  );
+
+  const url = new URL(inventoryLink.url);
+  assert.equal(url.searchParams.get('model'), '2500');
+  assert.equal(url.searchParams.get('engine'), '6.4L V8');
+  assert.equal(url.searchParams.get('drivetrain'), '4X4');
+  assert.equal(url.searchParams.get('cab_type'), 'Crew Cab');
+  assert.equal(url.searchParams.get('wheelbase_code'), '149');
+  assert.equal(url.searchParams.get('utm_campaign'), 'vin_lookup');
+  assert.match(url.searchParams.get('utm_content'), /^vin_lookup_ram-2500/);
+});
+
+test('buildFilteredInventoryUrl carries trailer target attribution to Perkins', () => {
+  const inventoryLink = buildFilteredInventoryUrl(
+    { model: '3500', engine: '6.7L Cummins HO', drive: '4x4', cab: 'Crew', bed: `8'` },
+    {
+      baseUrl: 'https://perkinsmotors.com/sale/ram-3500-colorado-springs-co',
+      engines: ['6.7L I6 Cummins HO Turbo Diesel Eng'],
+      drivetrains: ['4X4'],
+      cabs: ['Crew Cab'],
+      wheelbases: ['169.5'],
+    },
+    { campaign: 'trailer_fit', trailerWeight: 12000, tongueWeight: 1200 }
+  );
+
+  const url = new URL(inventoryLink.url);
+  assert.equal(url.searchParams.get('utm_campaign'), 'trailer_fit');
+  assert.equal(url.searchParams.get('utm_term'), 'tow-12000-payload-1200');
+});
 
 test('findBestInventoryMatch rejects drive mismatches for reverse lookup inventory pairing', () => {
   const row = {

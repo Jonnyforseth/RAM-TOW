@@ -24,10 +24,18 @@ Common search phrases people use when they want this site:
 - what can i tow with a ram 2500 cummins
 - ram 1500 hemi towing capacity 4x4
 - ram hurricane towing capacity
+- ram 2500 6.4 hemi towing capacity
+- ram 3500 cummins payload
+- how to find ram axle ratio by vin
+- which ram can tow my camper
+- can a ram 1500 tow 10000 lbs
 
 ## Primary Pages
 
 - [RAM Towing Calculator](https://ramtow.com/): Main experience for VIN lookup, tow capacity lookup, payload lookup, live VIN scanning, and trailer-to-truck fit guidance.
+- [RAM 2500 Towing Capacity](https://ramtow.com/ram-2500-towing-capacity): VIN-first guide to RAM 2500 6.4L HEMI and Cummins towing variables, payload checks, and current Perkins Motors inventory.
+- [RAM 3500 Towing Capacity](https://ramtow.com/ram-3500-towing-capacity): RAM 3500 towing and payload guide covering Cummins, SRW/DRW, GVWR, axle ratio, and fifth-wheel/gooseneck checks.
+- [Can a RAM 1500 Tow 10,000 lbs?](https://ramtow.com/can-a-ram-1500-tow-10000-lbs): RAM 1500 engine, axle, drivetrain, hitch, and payload guidance for a 10,000 lb trailer.
 
 ## Reference Files
 

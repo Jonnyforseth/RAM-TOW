@@ -414,6 +414,8 @@ async function loadModelFilters(model) {
     engines: extractFilterValues(html, 'engine'),
     drivetrains: extractFilterValues(html, 'drivetrain'),
     trims: extractFilterValues(html, 'trim'),
+    cabs: extractFilterValues(html, 'cab_type'),
+    wheelbases: extractFilterValues(html, 'wheelbase_code'),
   };
 
   filterCache.set(model, {
@@ -437,7 +439,7 @@ function matchesPerkinsEngineFilter(filterValue, engine) {
     case '3.0L Hurricane HO':
       return text.includes('3 0l') && text.includes('hurricane') && text.includes('ho');
     case '6.4L HEMI V8':
-      return text.includes('6 4l') && text.includes('hemi');
+      return text.includes('6 4l') && (text.includes('hemi') || text.includes('v8'));
     case '6.7L Cummins HO':
       return text.includes('6 7l') && text.includes('i6');
     default:
@@ -447,6 +449,67 @@ function matchesPerkinsEngineFilter(filterValue, engine) {
 
 function getMatchingPerkinsEngineFilters(availableFilters, engine) {
   return unique((availableFilters || []).filter((value) => matchesPerkinsEngineFilter(value, engine)));
+}
+
+function getMatchingPerkinsCabFilter(availableFilters, cab) {
+  const normalizedCab = normalizeCab(cab);
+  return (availableFilters || []).find((value) => normalizeCab(value) === normalizedCab) || null;
+}
+
+// Perkins exposes bed length through wheelbase rather than a dedicated bed filter.
+// Only use a wheelbase where the RAM cab/bed pairing is unambiguous.
+function getMatchingPerkinsWheelbaseFilters(model, cab, bed, availableFilters) {
+  const key = `${model}|${normalizeCab(cab)}|${String(bed || '').replace(/\s+/g, '')}`;
+  const expected = {
+    '1500|Crew|5\'7"': ['144.5', '145.1'],
+    '1500|Quad|6\'4"': ['140.5'],
+    '2500|Regular|8\'': ['140.5'],
+    '2500|Crew|6\'4"': ['149', '149.0'],
+    '2500|Crew|8\'': ['169', '169.0'],
+    '2500|Mega|6\'4"': ['160.5'],
+    '3500|Regular|8\'': ['140'],
+    '3500|Crew|6\'4"': ['149.5'],
+    '3500|Crew|8\'': ['169.5'],
+  }[key] || [];
+
+  return unique(expected.filter((value) => (availableFilters || []).includes(value)));
+}
+
+function slugifyTrackingValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function applyTrackingParams(url, row, tracking = {}) {
+  const trackedUrl = new URL(url);
+  const source = tracking.source || 'ramtow.com';
+  const medium = tracking.medium || 'referral';
+  const campaign = tracking.campaign || 'perkins_inventory';
+  const content = tracking.content || [
+    tracking.context || 'inventory',
+    `ram-${row.model || 'truck'}`,
+    slugifyTrackingValue(row.engine),
+    slugifyTrackingValue(row.drive),
+    slugifyTrackingValue(row.cab),
+    slugifyTrackingValue(row.bed),
+  ].filter(Boolean).join('_');
+
+  trackedUrl.searchParams.set('utm_source', source);
+  trackedUrl.searchParams.set('utm_medium', medium);
+  trackedUrl.searchParams.set('utm_campaign', campaign);
+  trackedUrl.searchParams.set('utm_content', content);
+
+  if (tracking.trailerWeight && tracking.tongueWeight) {
+    trackedUrl.searchParams.set(
+      'utm_term',
+      `tow-${Math.round(tracking.trailerWeight)}-payload-${Math.round(tracking.tongueWeight)}`
+    );
+  }
+
+  return trackedUrl.toString();
 }
 
 function encodeFilterParam(key, values) {
@@ -463,7 +526,7 @@ function encodeFilterParam(key, values) {
   return `${encodeURIComponent(key)}=${encodedValue}`;
 }
 
-function buildFilteredInventoryUrl(row, filters) {
+function buildFilteredInventoryUrl(row, filters, tracking = {}) {
   if (!filters?.baseUrl) {
     return null;
   }
@@ -472,6 +535,13 @@ function buildFilteredInventoryUrl(row, filters) {
   const advancedSearchUrl = new URL('https://perkinsmotors.com/advanced-search');
   const engineValues = getMatchingPerkinsEngineFilters(filters.engines, row.engine);
   const drivetrainValue = filters.drivetrains.find((value) => normalizeDrive(value) === row.drive);
+  const cabValue = getMatchingPerkinsCabFilter(filters.cabs, row.cab);
+  const wheelbaseValues = getMatchingPerkinsWheelbaseFilters(
+    String(row.model || ''),
+    row.cab,
+    row.bed,
+    filters.wheelbases
+  );
   const queryParts = [
     encodeFilterParam('condition', 'new'),
     encodeFilterParam('make', 'Ram'),
@@ -490,15 +560,27 @@ function buildFilteredInventoryUrl(row, filters) {
     applied.push(`Drivetrain: ${drivetrainValue}`);
   }
 
+  if (cabValue) {
+    queryParts.push(encodeFilterParam('cab_type', cabValue));
+    applied.push(`Cab: ${cabValue}`);
+  }
+
+  if (wheelbaseValues.length) {
+    queryParts.push(encodeFilterParam('wheelbase_code', wheelbaseValues));
+    applied.push(`Bed: ${row.bed} (wheelbase)`);
+  } else if (row.bed) {
+    applied.push(`Bed to verify: ${row.bed}`);
+  }
+
   advancedSearchUrl.search = queryParts.filter(Boolean).join('&');
 
   return {
-    url: advancedSearchUrl.toString(),
+    url: applyTrackingParams(advancedSearchUrl.toString(), row, tracking),
     applied,
   };
 }
 
-async function attachInventorySearchLinks(recommendations) {
+async function attachInventorySearchLinks(recommendations, tracking = {}) {
   const models = unique(recommendations.map((row) => row.model).filter((model) => MODEL_LISTING_URLS[model]));
   const filtersByModel = Object.fromEntries(
     await Promise.all(models.map(async (model) => [model, await loadModelFilters(model)]))
@@ -508,7 +590,7 @@ async function attachInventorySearchLinks(recommendations) {
     source: 'https://perkinsmotors.com',
     checkedAt: new Date().toISOString(),
     results: recommendations.map((row) => {
-      const inventoryLink = buildFilteredInventoryUrl(row, filtersByModel[row.model]);
+      const inventoryLink = buildFilteredInventoryUrl(row, filtersByModel[row.model], tracking);
       return {
         ...row,
         inventoryLink,
@@ -937,6 +1019,7 @@ module.exports = {
   applyVerifiedCapacities,
   attachInventoryMatches,
   attachInventorySearchLinks,
+  buildFilteredInventoryUrl,
   buildCandidateProfile,
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,

@@ -18,18 +18,29 @@ const vinAxleField = document.querySelector('#vin-axle-field');
 const vinAxleSelect = document.querySelector('#vin-axle-select');
 const vinGvwrField = document.querySelector('#vin-gvwr-field');
 const vinGvwrSelect = document.querySelector('#vin-gvwr-select');
+const vinPerkinsCta = document.querySelector('#vin-perkins-cta');
+const vinPerkinsCopy = document.querySelector('#vin-perkins-copy');
+const vinPerkinsLink = document.querySelector('#vin-perkins-link');
+const vinTradeCta = document.querySelector('#vin-trade-cta');
+const vinTradeCopy = document.querySelector('#vin-trade-copy');
+const vinTradeLink = document.querySelector('#vin-trade-link');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
 const reverseResults = document.querySelector('#reverse-results');
 const hitchTypeInput = document.querySelector('#hitch-type');
 const tongueWeightLabel = document.querySelector('#tongue-weight-label');
+const trailerWeightInput = document.querySelector('#trailer-weight');
+const tongueWeightInput = document.querySelector('#tongue-weight');
+const modelPreferenceInput = document.querySelector('#model-preference');
 const reverseInputs = [
-  document.querySelector('#trailer-weight'),
-  document.querySelector('#tongue-weight'),
+  trailerWeightInput,
+  tongueWeightInput,
   hitchTypeInput,
-  document.querySelector('#model-preference'),
+  modelPreferenceInput,
 ];
+
+const TRAILER_TARGET_STORAGE_KEY = 'ramTowTrailerTarget';
 
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
@@ -92,6 +103,7 @@ let vinBaseSpec = null;
 let vinOverrideOptions = null;
 let vinRefinementRequest = 0;
 let vinRefinementAvailable = false;
+let vinTradeRequest = 0;
 
 function renderInsight(item) {
   return `
@@ -217,11 +229,50 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, dete
   detailNode.innerHTML = lines.join('<br>');
 }
 
-function renderInventoryLink(row) {
+function getTrailerTarget() {
+  const trailerWeight = Number(trailerWeightInput?.value);
+  const tongueWeight = Number(tongueWeightInput?.value);
+
+  if (!Number.isFinite(trailerWeight) || trailerWeight <= 0 || !Number.isFinite(tongueWeight) || tongueWeight <= 0) {
+    return null;
+  }
+
+  return {
+    trailerWeight,
+    tongueWeight,
+    hitchType: hitchTypeInput?.value || 'conventional',
+    modelPreference: modelPreferenceInput?.value || '',
+  };
+}
+
+function saveTrailerTarget(target = getTrailerTarget()) {
+  if (!target) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(TRAILER_TARGET_STORAGE_KEY, JSON.stringify(target));
+  } catch (_error) {
+    // The calculator works normally if browser storage is unavailable.
+  }
+}
+
+function formatTrailerTarget(target) {
+  return `Target: ${formatCapacity(target.trailerWeight)} tow / ${formatCapacity(target.tongueWeight)} payload`;
+}
+
+function trailerTargetDataAttributes(target) {
+  if (!target) {
+    return '';
+  }
+  return `data-trailer-weight="${escapeHtml(target.trailerWeight)}" data-tongue-weight="${escapeHtml(target.tongueWeight)}" data-hitch-type="${escapeHtml(target.hitchType || 'conventional')}" data-model-preference="${escapeHtml(target.modelPreference || '')}"`;
+}
+
+function renderInventoryLink(row, target = null) {
   if (!row.inventoryLink?.url) {
     return `
       <div class="inventory-match">
-        <span class="inventory-label">Perkins Inventory</span>
+        <span class="inventory-label">Inventory connections powered by Perkins Motors</span>
         <p>Open the RAM ${escapeHtml(row.model || '')} inventory page, then run any candidate VIN back through the lookup on the left.</p>
       </div>
     `;
@@ -232,11 +283,94 @@ function renderInventoryLink(row) {
 
   return `
     <div class="inventory-match">
-      <span class="inventory-label">Perkins Inventory</span>
+      <span class="inventory-label">Inventory connections powered by Perkins Motors</span>
       <p>${applied || 'Filtered to the closest available engine and drivetrain family on Perkins Motors.'}</p>
-      <a href="${link}" target="_blank" rel="noreferrer">View filtered RAM ${escapeHtml(row.model || '')} inventory</a>
+      ${target ? `<p class="inventory-target">${escapeHtml(formatTrailerTarget(target))}</p>` : ''}
+      <a class="button button-secondary inventory-button" href="${link}" target="_blank" rel="noreferrer" ${trailerTargetDataAttributes(target)}>Shop matching RAM ${escapeHtml(row.model || '')}s</a>
+      <p class="inventory-verify">Verify any candidate VIN in RAM Tow before purchase.</p>
     </div>
   `;
+}
+
+function renderVinPerkinsCta(response, spec) {
+  const link = response.perkinsInventoryLink;
+  if (!link?.url || !vinPerkinsCta || !vinPerkinsLink) {
+    vinPerkinsCta?.classList.add('hidden');
+    return;
+  }
+
+  const description = [spec?.model ? `RAM ${spec.model}` : null, spec?.engine, spec?.drive, spec?.cab, spec?.bed]
+    .filter(Boolean)
+    .join(' | ');
+  vinPerkinsCopy.textContent = description
+    ? `View current Perkins inventory filtered to this setup: ${description}.`
+    : 'View the closest current Perkins inventory filters for this RAM setup.';
+  vinPerkinsLink.href = link.url;
+  vinPerkinsCta.classList.remove('hidden');
+}
+
+function setTradeCtaVisible(isVisible) {
+  vinTradeCta?.classList.toggle('hidden', !isVisible);
+}
+
+function getDisplayedCapacity(summary, match, key) {
+  const summaryMaximum = Number(summary?.max);
+  if (Number.isFinite(summaryMaximum) && summaryMaximum > 0) {
+    return summaryMaximum;
+  }
+  const capacity = Number(key === 'tow' ? match?.maxTow : match?.maxPayload);
+  return Number.isFinite(capacity) && capacity > 0 ? capacity : null;
+}
+
+async function refreshVinTradeCta(response) {
+  const target = getTrailerTarget();
+  const requestId = ++vinTradeRequest;
+  const towCapacityValue = getDisplayedCapacity(response.towSummary, response.towMatch, 'tow');
+  const payloadCapacityValue = getDisplayedCapacity(response.payloadSummary, response.payloadMatch, 'payload');
+
+  if (!target || (!towCapacityValue && !payloadCapacityValue)) {
+    setTradeCtaVisible(false);
+    return;
+  }
+
+  const truckFallsShort =
+    (towCapacityValue && target.trailerWeight > towCapacityValue) ||
+    (payloadCapacityValue && target.tongueWeight > payloadCapacityValue);
+
+  if (!truckFallsShort) {
+    setTradeCtaVisible(false);
+    return;
+  }
+
+  setTradeCtaVisible(false);
+  try {
+    const tradeResponse = await fetchJson('/api/reverse-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(target),
+    });
+    if (requestId !== vinTradeRequest) {
+      return;
+    }
+
+    const upgrade = (tradeResponse.results || []).find((row) => row.inventoryLink?.url);
+    if (!upgrade || !vinTradeLink || !vinTradeCopy) {
+      setTradeCtaVisible(false);
+      return;
+    }
+
+    vinTradeCopy.textContent = `Your current RAM falls short of ${formatTrailerTarget(target).replace('Target: ', '')}. See a RAM ${upgrade.model} setup at Perkins Motors that clears it.`;
+    vinTradeLink.href = upgrade.inventoryLink.url;
+    vinTradeLink.setAttribute('data-trailer-weight', String(target.trailerWeight));
+    vinTradeLink.setAttribute('data-tongue-weight', String(target.tongueWeight));
+    vinTradeLink.setAttribute('data-hitch-type', target.hitchType);
+    vinTradeLink.setAttribute('data-model-preference', target.modelPreference || '');
+    setTradeCtaVisible(true);
+  } catch (_error) {
+    if (requestId === vinTradeRequest) {
+      setTradeCtaVisible(false);
+    }
+  }
 }
 
 function renderRefinementOptions(select, values, selectedValue, placeholder, formatValue = (value) => value) {
@@ -279,6 +413,8 @@ function renderVinResponse(response, detectedSpec = response.detectedSpec) {
   renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow', response.towSummary, detectedSpec);
   renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload', response.payloadSummary, detectedSpec);
   renderVinRefinement(response, detectedSpec);
+  renderVinPerkinsCta(response, detectedSpec);
+  void refreshVinTradeCta(response);
   vinResults.classList.remove('hidden');
 
   if (detectedSpec?.stickerAvailable === false) {
@@ -1031,11 +1167,12 @@ reverseForm.addEventListener('submit', async (event) => {
 
   try {
     const payload = {
-      trailerWeight: Number(document.querySelector('#trailer-weight').value),
-      tongueWeight: Number(document.querySelector('#tongue-weight').value),
+      trailerWeight: Number(trailerWeightInput.value),
+      tongueWeight: Number(tongueWeightInput.value),
       hitchType: hitchTypeInput?.value || 'conventional',
-      modelPreference: document.querySelector('#model-preference').value,
+      modelPreference: modelPreferenceInput.value,
     };
+    saveTrailerTarget(payload);
 
     const response = await fetchJson('/api/reverse-lookup', {
       method: 'POST',
@@ -1071,7 +1208,7 @@ reverseForm.addEventListener('submit', async (event) => {
         <p>Towing Capacity: ${formatCapacity(row.maxTow)} &bull; Payload Capacity: ${formatCapacity(row.maxPayload)}</p>
         <p>Chart setup: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
         <p>Headroom: ${formatCapacity(row.towSurplus)} tow &bull; ${formatCapacity(row.payloadSurplus)} payload</p>
-        ${renderInventoryLink(row)}
+        ${renderInventoryLink(row, payload)}
         <span class="confidence">Verify the VIN in the decoder to confirm axle ratio and exact truck configuration before you buy.</span>
       `;
       reverseResults.appendChild(card);
@@ -1090,10 +1227,60 @@ for (const input of reverseInputs) {
   input.addEventListener('change', resetReverseResults);
 }
 
+function restoreTrailerTarget() {
+  const params = new URLSearchParams(window.location.search);
+  let target = null;
+
+  const trailerWeight = Number(params.get('trailerWeight'));
+  const tongueWeight = Number(params.get('tongueWeight'));
+  if (Number.isFinite(trailerWeight) && trailerWeight > 0 && Number.isFinite(tongueWeight) && tongueWeight > 0) {
+    target = {
+      trailerWeight,
+      tongueWeight,
+      hitchType: params.get('hitchType') || 'conventional',
+      modelPreference: params.get('modelPreference') || '',
+    };
+  } else {
+    try {
+      target = JSON.parse(sessionStorage.getItem(TRAILER_TARGET_STORAGE_KEY) || 'null');
+    } catch (_error) {
+      target = null;
+    }
+  }
+
+  if (!target || !Number(target.trailerWeight) || !Number(target.tongueWeight)) {
+    return;
+  }
+
+  trailerWeightInput.value = Math.round(Number(target.trailerWeight));
+  tongueWeightInput.value = Math.round(Number(target.tongueWeight));
+  if (hitchTypeInput?.querySelector(`option[value="${target.hitchType}"]`)) {
+    hitchTypeInput.value = target.hitchType;
+  }
+  if (modelPreferenceInput?.querySelector(`option[value="${target.modelPreference || ''}"]`)) {
+    modelPreferenceInput.value = target.modelPreference || '';
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const link = event.target.closest('[data-trailer-weight][data-tongue-weight]');
+  if (!link) {
+    return;
+  }
+
+  saveTrailerTarget({
+    trailerWeight: Number(link.dataset.trailerWeight),
+    tongueWeight: Number(link.dataset.tongueWeight),
+    hitchType: link.dataset.hitchType || 'conventional',
+    modelPreference: link.dataset.modelPreference || '',
+  });
+});
+
 if (hitchTypeInput) {
   hitchTypeInput.addEventListener('change', syncHitchTypeUi);
 }
 
+restoreTrailerTarget();
 syncHitchTypeUi();
 
 window.addEventListener('pageshow', () => {

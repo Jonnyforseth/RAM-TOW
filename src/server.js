@@ -14,6 +14,7 @@ const {
   payloadRows,
 } = require('./lib/chart-service');
 const { attachInventorySearchLinks } = require('./lib/perkins-service');
+const { getVinInventoryLink } = require('./lib/inventory-link-service');
 const { lookupVin } = require('./lib/sticker-service');
 
 const app = express();
@@ -50,6 +51,13 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
     const chartYear = vinResult.detectedSpec.year;
     const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
     const rawHints = await findRawChartHints(vinResult.detectedSpec, { year: chartYear });
+    let perkinsInventoryLink = null;
+
+    try {
+      perkinsInventoryLink = await getVinInventoryLink(vinResult.detectedSpec, matches);
+    } catch (_error) {
+      // A temporary inventory request must not block the VIN capacity result.
+    }
 
     res.json({
       ok: true,
@@ -65,6 +73,7 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
       matches,
       overrideOptions: getOverrideOptions(vinResult.detectedSpec, matches),
       rawHints,
+      perkinsInventoryLink,
       notes: [
         `Results are based on the ${chartYear} RAM towing and payload PDFs loaded into this local site.`,
         'If bed length, GVWR, or rear wheel setup is missing from the sticker, use the override fields to lock in the exact configuration.',
@@ -84,6 +93,13 @@ app.post('/api/match-config', async (req, res) => {
     const chartYear = spec.year || 2026;
     const matches = findMatches(spec, { year: chartYear });
     const rawHints = await findRawChartHints(spec, { year: chartYear });
+    let perkinsInventoryLink = null;
+
+    try {
+      perkinsInventoryLink = await getVinInventoryLink(spec, matches);
+    } catch (_error) {
+      // Keep chart refinements available if Perkins inventory is unreachable.
+    }
 
     res.json({
       ok: true,
@@ -96,6 +112,7 @@ app.post('/api/match-config', async (req, res) => {
       matches,
       overrideOptions: getOverrideOptions(spec, matches),
       rawHints,
+      perkinsInventoryLink,
     });
   } catch (error) {
     res.status(400).json({
@@ -129,7 +146,12 @@ app.post('/api/reverse-lookup', async (req, res) => {
     let results = recommendations;
 
     try {
-      const inventoryResponse = await attachInventorySearchLinks(recommendations);
+      const inventoryResponse = await attachInventorySearchLinks(recommendations, {
+        campaign: 'trailer_fit',
+        context: 'trailer_fit',
+        trailerWeight,
+        tongueWeight,
+      });
       results = inventoryResponse.results;
       inventoryNotes = [
         `Perkins inventory filters checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,

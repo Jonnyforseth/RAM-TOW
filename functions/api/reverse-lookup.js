@@ -30,7 +30,12 @@ export async function onRequestPost(context) {
     let results = recommendations;
 
     try {
-      const inventoryResponse = await attachInventorySearchLinks(recommendations);
+      const inventoryResponse = await attachInventorySearchLinks(recommendations, {
+        campaign: 'trailer_fit',
+        context: 'trailer_fit',
+        trailerWeight,
+        tongueWeight,
+      });
       results = inventoryResponse.results;
       inventoryNotes = [
         `Perkins inventory filters checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,

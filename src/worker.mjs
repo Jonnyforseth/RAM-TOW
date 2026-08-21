@@ -3,6 +3,12 @@ import { onRequestGet as onLookupVinGet } from '../functions/api/lookup-vin/[vin
 import { onRequestPost as onMatchConfigPost } from '../functions/api/match-config.js';
 import { onRequestPost as onReverseLookupPost } from '../functions/api/reverse-lookup.js';
 
+const STATIC_LANDING_PAGES = new Map([
+  ['/ram-2500-towing-capacity', '/ram-2500-towing-capacity/index.html'],
+  ['/ram-3500-towing-capacity', '/ram-3500-towing-capacity/index.html'],
+  ['/can-a-ram-1500-tow-10000-lbs', '/can-a-ram-1500-tow-10000-lbs/index.html'],
+]);
+
 function methodNotAllowed() {
   return new Response(JSON.stringify({ ok: false, error: 'Method not allowed.' }), {
     status: 405,
@@ -48,6 +54,12 @@ export default {
         return methodNotAllowed();
       }
       return onReverseLookupPost({ request, env });
+    }
+
+    const staticPage = STATIC_LANDING_PAGES.get(pathname);
+    if (staticPage) {
+      const assetUrl = new URL(staticPage, url);
+      return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
     return env.ASSETS.fetch(request);
