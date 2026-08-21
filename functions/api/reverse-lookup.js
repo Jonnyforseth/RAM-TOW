@@ -2,7 +2,7 @@ import chartService from '../../src/lib/chart-service.js';
 import perkinsService from '../../src/lib/perkins-service.js';
 import { json, errorResponse } from '../_shared/http.js';
 
-const { reverseLookup } = chartService;
+const { collectReverseLookupRows } = chartService;
 const { attachInventoryMatches } = perkinsService;
 
 export async function onRequestPost(context) {
@@ -20,12 +20,15 @@ export async function onRequestPost(context) {
       throw new Error('Enter a valid tongue weight.');
     }
 
-    const baseResults = reverseLookup({ trailerWeight, tongueWeight, modelPreference });
+    const baseResults = collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference });
     let inventoryNotes = [];
     let results = baseResults;
 
     try {
-      const inventoryResponse = await attachInventoryMatches(baseResults);
+      const inventoryResponse = await attachInventoryMatches(baseResults, {
+        trailerWeight,
+        tongueWeight,
+      });
       results = inventoryResponse.results;
       inventoryNotes = [
         `Perkins inventory pairing checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,

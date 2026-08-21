@@ -3,10 +3,10 @@ const path = require('path');
 const {
   cleanSpec,
   ensureChartTexts,
+  collectReverseLookupRows,
   findMatches,
   findRawChartHints,
   getOverrideOptions,
-  reverseLookup,
   towRows,
   payloadRows,
 } = require('./lib/chart-service');
@@ -97,12 +97,15 @@ app.post('/api/reverse-lookup', async (req, res) => {
       throw new Error('Enter a valid tongue weight.');
     }
 
-    const baseResults = reverseLookup({ trailerWeight, tongueWeight, modelPreference });
+    const baseResults = collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference });
     let inventoryNotes = [];
     let results = baseResults;
 
     try {
-      const inventoryResponse = await attachInventoryMatches(baseResults);
+      const inventoryResponse = await attachInventoryMatches(baseResults, {
+        trailerWeight,
+        tongueWeight,
+      });
       results = inventoryResponse.results;
       inventoryNotes = [
         `Perkins inventory pairing checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,

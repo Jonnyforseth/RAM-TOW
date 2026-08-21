@@ -1,21 +1,13 @@
-const state = {
-  lastVinResponse: null,
-};
-
 const vinForm = document.querySelector('#vin-form');
 const vinInput = document.querySelector('#vin-input');
 const vinStatus = document.querySelector('#vin-status');
 const vinResults = document.querySelector('#vin-results');
 const detectedPills = document.querySelector('#detected-pills');
 const stickerLink = document.querySelector('#sticker-link');
-const overrideGrid = document.querySelector('#override-grid');
-const applyOverridesButton = document.querySelector('#apply-overrides');
 const towCapacity = document.querySelector('#tow-capacity');
 const towDetail = document.querySelector('#tow-detail');
 const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
-const chartHints = document.querySelector('#chart-hints');
-const overrideTemplate = document.querySelector('#override-template');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -80,53 +72,10 @@ function renderDetectedSpec(spec) {
   }
 }
 
-function renderOverrideGrid(spec, overrideOptions) {
-  overrideGrid.innerHTML = '';
-  const fields = [
-    ['model', 'Model'],
-    ['trim', 'Trim'],
-    ['engine', 'Engine'],
-    ['drive', 'Drive'],
-    ['cab', 'Cab'],
-    ['bed', 'Bed'],
-    ['rearWheels', 'Rear Wheels'],
-    ['axleRatio', 'Axle Ratio'],
-    ['gvwr', 'GVWR'],
-  ];
-
-  for (const [key, label] of fields) {
-    const fragment = overrideTemplate.content.cloneNode(true);
-    const field = fragment.querySelector('.field');
-    const span = fragment.querySelector('span');
-    const select = fragment.querySelector('select');
-
-    field.dataset.key = key;
-    span.textContent = label;
-    select.name = key;
-
-    const blank = document.createElement('option');
-    blank.value = '';
-    blank.textContent = 'Auto';
-    select.appendChild(blank);
-
-    for (const option of overrideOptions[key] || []) {
-      const element = document.createElement('option');
-      element.value = option;
-      element.textContent = option;
-      if (String(spec[key] || '') === option) {
-        element.selected = true;
-      }
-      select.appendChild(element);
-    }
-
-    overrideGrid.appendChild(fragment);
-  }
-}
-
 function renderPrimaryMatch(match, capacityNode, detailNode, kind) {
   if (!match) {
     capacityNode.textContent = 'No clear match';
-    detailNode.textContent = 'Use the overrides to tighten the configuration and try again.';
+    detailNode.textContent = 'Try another VIN or verify the sticker details.';
     return;
   }
 
@@ -140,27 +89,6 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind) {
     match.trim || match.trimHint ? `Trim hint: ${match.trim || match.trimHint}` : null,
   ].filter(Boolean);
   detailNode.innerHTML = lines.join('<br>');
-}
-
-function renderHints(hints) {
-  chartHints.innerHTML = '';
-  if (!hints?.length) {
-    const card = document.createElement('article');
-    card.className = 'hint-card';
-    card.innerHTML = '<h4>No extra hint needed</h4><p>The structured match had enough information.</p>';
-    chartHints.appendChild(card);
-    return;
-  }
-
-  for (const hint of hints) {
-    const card = document.createElement('article');
-    card.className = 'hint-card';
-    card.innerHTML = `
-      <h4>Chart reference: ${hint.needle}</h4>
-      <p>${hint.snippet}</p>
-    `;
-    chartHints.appendChild(card);
-  }
 }
 
 function renderInventoryMatch(row) {
@@ -189,22 +117,11 @@ function renderInventoryMatch(row) {
 }
 
 function renderVinResponse(response) {
-  state.lastVinResponse = response;
   stickerLink.href = response.pdfUrl;
   renderDetectedSpec(response.detectedSpec);
-  renderOverrideGrid(response.detectedSpec, response.overrideOptions);
   renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow');
   renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload');
-  renderHints(response.rawHints);
   vinResults.classList.remove('hidden');
-}
-
-function collectOverrideSpec() {
-  const spec = { ...(state.lastVinResponse?.detectedSpec || {}) };
-  overrideGrid.querySelectorAll('select').forEach((select) => {
-    spec[select.name] = select.value || null;
-  });
-  return spec;
 }
 
 async function fetchJson(url, options) {
@@ -251,30 +168,6 @@ vinForm.addEventListener('submit', async (event) => {
   }
 });
 
-applyOverridesButton.addEventListener('click', async () => {
-  if (!state.lastVinResponse) {
-    return;
-  }
-
-  showStatus(vinStatus, 'Re-running chart match with your overrides...');
-  try {
-    const response = await fetchJson('/api/match-config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(collectOverrideSpec()),
-    });
-    hideStatus(vinStatus);
-    renderVinResponse({
-      ...state.lastVinResponse,
-      ...response,
-      pdfUrl: state.lastVinResponse.pdfUrl,
-      detectedSpec: response.spec,
-    });
-  } catch (error) {
-    showStatus(vinStatus, error.message, true);
-  }
-});
-
 reverseForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   hideStatus(reverseStatus);
@@ -299,22 +192,26 @@ reverseForm.addEventListener('submit', async (event) => {
     hideStatus(reverseStatus);
     reverseResults.classList.remove('hidden');
 
-    if (!response.results.length) {
+    const verifiedResults = (response.results || []).filter(
+      (row) => row.inventoryMatch && row.verificationSource === 'vin'
+    );
+
+    if (!verifiedResults.length) {
       const card = document.createElement('article');
       card.className = 'alternate-card';
-      card.innerHTML = '<h4>No chart-backed match found</h4><p>Try a larger model class, lighter tongue weight, or confirm the trailer numbers.</p>';
+      card.innerHTML = '<h4>No current Perkins match</h4><p>No current Perkins inventory truck matches those towing numbers with this filter. Try Any RAM truck or adjust the trailer inputs.</p>';
       reverseResults.appendChild(card);
       return;
     }
 
-    for (const row of response.results) {
+    for (const row of verifiedResults) {
       const card = document.createElement('article');
       card.className = 'alternate-card';
       card.innerHTML = `
         <h4>${row.inventoryMatch?.inventoryTitle || `${row.model} ${row.trim || ''} ${row.cab} ${row.bed} ${row.drive}`}</h4>
         <p>${row.engine}${row.rearWheels ? ` &bull; ${row.rearWheels}` : ''}${row.axleRatio ? ` &bull; Axle ${row.axleRatio}` : ''}</p>
-        <p>Needs: Tow ${formatCapacity(row.maxTow)} &bull; Payload ${formatCapacity(row.maxPayload)}</p>
-        <p>Chart match: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
+        <p>Towing Capacity: ${formatCapacity(row.maxTow)} &bull; Payload Capacity: ${formatCapacity(row.maxPayload)}</p>
+        <p>Truck setup: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
         <p>Headroom: ${formatCapacity(row.towSurplus)} tow &bull; ${formatCapacity(row.payloadSurplus)} payload</p>
         ${renderInventoryMatch(row)}
         ${row.confidence === 'medium' ? '<span class="confidence">HD edge case: verify against chart</span>' : ''}

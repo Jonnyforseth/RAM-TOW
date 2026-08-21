@@ -55,19 +55,6 @@
               </div>
               <div id="detected-pills" class="pill-row"></div>
             </div>
-
-            <div class="result-block">
-              <h3>Chart references</h3>
-              <div id="chart-hints" class="hint-list"></div>
-            </div>
-
-            <div class="result-block">
-              <div class="result-heading">
-                <h3>Manual overrides</h3>
-                <button id="apply-overrides" type="button" class="button button-secondary">Re-run match</button>
-              </div>
-              <div id="override-grid" class="override-grid"></div>
-            </div>
           </div>
         </section>
 
@@ -80,11 +67,11 @@
             <div class="field-grid">
               <label class="field">
                 <span>Trailer Weight</span>
-                <input id="trailer-weight" type="number" min="0" step="10" placeholder="9500">
+                <input id="trailer-weight" type="number" min="0" step="1" placeholder="9500">
               </label>
               <label class="field">
                 <span>Tongue Weight</span>
-                <input id="tongue-weight" type="number" min="0" step="10" placeholder="950">
+                <input id="tongue-weight" type="number" min="0" step="1" placeholder="950">
               </label>
             </div>
             <label class="field">
@@ -105,13 +92,6 @@
         </section>
       </main>
     </div>
-
-    <template id="override-template">
-      <label class="field">
-        <span></span>
-        <select></select>
-      </label>
-    </template>
 
     <script src="/app.js"></script>
   </body>

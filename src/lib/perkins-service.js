@@ -1,10 +1,12 @@
 const {
+  findMatches,
   normalizeBed,
   normalizeCab,
   normalizeDrive,
   normalizeEngine,
   normalizeRearWheels,
 } = require('./chart-service');
+const { lookupVin } = require('./sticker-service');
 
 const MODEL_LISTING_URLS = {
   '1500': 'https://perkinsmotors.com/sale/ram-1500-colorado-springs-co',
@@ -17,8 +19,10 @@ const MAX_LISTING_PAGES = 6;
 const DETAIL_CONCURRENCY = 6;
 const MAX_RESULTS = 12;
 const MAX_PER_TRIM = 2;
+const VERIFY_CONCURRENCY = 4;
 
 const inventoryCache = new Map();
+const verificationCache = new Map();
 
 function decodeHtml(value) {
   return String(value || '')
@@ -478,7 +482,19 @@ function findBestInventoryMatch(row, inventory) {
       if (scoreInfo.mismatches.includes('engine')) {
         return false;
       }
+      if (scoreInfo.mismatches.includes('drive')) {
+        return false;
+      }
+      if (scoreInfo.mismatches.includes('cab')) {
+        return false;
+      }
+      if (scoreInfo.mismatches.includes('bed')) {
+        return false;
+      }
       if (scoreInfo.mismatches.includes('rearWheels')) {
+        return false;
+      }
+      if (scoreInfo.mismatches.includes('axleRatio')) {
         return false;
       }
       if (scoreInfo.score < 20) {
@@ -516,8 +532,183 @@ function findBestInventoryMatch(row, inventory) {
   };
 }
 
+function buildCandidateProfile(rows) {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+
+  return {
+    engines: unique(sourceRows.map((row) => row.engine)),
+    drives: unique(sourceRows.map((row) => row.drive)),
+    cabs: unique(sourceRows.map((row) => row.cab)),
+    beds: unique(sourceRows.map((row) => row.bed)),
+    rearWheels: unique(sourceRows.map((row) => row.rearWheels)),
+    axleRatios: unique(sourceRows.map((row) => row.axleRatio)),
+    trims: unique(sourceRows.map((row) => row.trim)),
+  };
+}
+
+function inventoryMatchesCandidateProfile(item, profile) {
+  if (!item?.inventoryVin) {
+    return false;
+  }
+
+  if (item.year && item.year < 2026) {
+    return false;
+  }
+
+  const scalarChecks = [
+    ['engine', profile.engines],
+    ['drive', profile.drives],
+    ['cab', profile.cabs],
+    ['bed', profile.beds],
+    ['rearWheels', profile.rearWheels],
+  ];
+
+  for (const [field, allowed] of scalarChecks) {
+    if (item[field] && allowed.length && !allowed.includes(item[field])) {
+      return false;
+    }
+  }
+
+  if (
+    profile.axleRatios.length &&
+    item.axleRatios.length &&
+    !item.axleRatios.some((ratio) => profile.axleRatios.includes(ratio))
+  ) {
+    return false;
+  }
+
+  if (
+    profile.trims.length &&
+    item.trim &&
+    !profile.trims.some((trim) => trimMatches(trim, item.trim))
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function applyVerifiedCapacities(row, verified) {
+  if (!verified) {
+    return row;
+  }
+
+  return {
+    ...row,
+    trim: verified.trim || row.trim,
+    drive: verified.drive || row.drive,
+    cab: verified.cab || row.cab,
+    bed: verified.bed || row.bed,
+    engine: verified.engine || row.engine,
+    axleRatio: verified.axleRatio || row.axleRatio,
+    towGCWR: verified.towGCWR ?? row.towGCWR,
+    payloadGVWR: verified.payloadGVWR ?? row.payloadGVWR,
+    maxTow: verified.towCapacity ?? row.maxTow,
+    maxPayload: verified.payloadCapacity ?? row.maxPayload,
+    verificationSource: verified.sourceVin ? 'vin' : row.verificationSource || null,
+  };
+}
+
+function meetsTrailerRequirements(row, requirements = {}) {
+  const trailerWeight = Number(requirements?.trailerWeight);
+  const tongueWeight = Number(requirements?.tongueWeight);
+
+  if (Number.isFinite(trailerWeight) && trailerWeight > 0 && row.maxTow < trailerWeight) {
+    return false;
+  }
+
+  if (Number.isFinite(tongueWeight) && tongueWeight > 0 && row.maxPayload < tongueWeight) {
+    return false;
+  }
+
+  return true;
+}
+
+async function verifyInventoryCapabilities(inventoryMatch) {
+  const vin = String(inventoryMatch?.inventoryVin || '').trim().toUpperCase();
+  if (!vin) {
+    return null;
+  }
+
+  const cached = verificationCache.get(vin);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  let value = null;
+
+  try {
+    const vinLookup = await lookupVin(vin);
+    const matches = findMatches(vinLookup.detectedSpec);
+    const towMatch = matches.towMatches[0] || null;
+    const payloadMatch = matches.payloadMatches[0] || null;
+
+    if (towMatch && payloadMatch) {
+      value = {
+        sourceVin: vin,
+        detectedSpec: vinLookup.detectedSpec,
+        towMatch,
+        payloadMatch,
+        trim: vinLookup.detectedSpec.trim || null,
+        drive: towMatch.drive || vinLookup.detectedSpec.drive || null,
+        cab: towMatch.cab || payloadMatch.cab || vinLookup.detectedSpec.cab || null,
+        bed: towMatch.bed || payloadMatch.bed || vinLookup.detectedSpec.bed || null,
+        engine: towMatch.engine || payloadMatch.engine || vinLookup.detectedSpec.engine || null,
+        axleRatio: towMatch.axleRatio || vinLookup.detectedSpec.axleRatio || null,
+        towGCWR: towMatch.gcwr || null,
+        payloadGVWR: payloadMatch.gvwr || null,
+        towCapacity: towMatch.maxTow,
+        payloadCapacity: payloadMatch.maxPayload,
+      };
+    }
+  } catch (_error) {
+    value = null;
+  }
+
+  verificationCache.set(vin, {
+    fetchedAt: Date.now(),
+    value,
+  });
+
+  return value;
+}
+
+function createVerifiedInventoryRow(item, verified, requirements) {
+  const row = {
+    model: verified.detectedSpec?.model || item.model || null,
+    engine: verified.engine || item.engine || null,
+    trim: verified.trim || item.trim || null,
+    drive: verified.drive || item.drive || null,
+    cab: verified.cab || item.cab || null,
+    bed: verified.bed || item.bed || null,
+    rearWheels: verified.detectedSpec?.rearWheels || item.rearWheels || null,
+    axleRatio: verified.axleRatio || null,
+    towGCWR: verified.towGCWR || null,
+    payloadGVWR: verified.payloadGVWR || null,
+    maxTow: verified.towCapacity,
+    maxPayload: verified.payloadCapacity,
+    towSurplus: verified.towCapacity - requirements.trailerWeight,
+    payloadSurplus: verified.payloadCapacity - requirements.tongueWeight,
+    confidence: 'high',
+    verificationSource: 'vin',
+    inventoryMatch: {
+      stockNumber: item.stockNumber,
+      inventoryUrl: item.inventoryUrl,
+      inventoryTitle: item.title,
+      inventoryVin: item.inventoryVin,
+      currentPrice: item.price,
+      matchLabel: 'VIN-verified Perkins match',
+      matchScore: 100,
+      trimKey: item.trimKey || normalizeTrim(item.trim || item.title),
+    },
+  };
+
+  return row;
+}
+
 function sortAndLimitResults(results) {
-  const sorted = [...results].sort((left, right) => {
+  const matchedResults = results.filter((row) => row.inventoryMatch);
+  const sorted = [...matchedResults].sort((left, right) => {
     const leftPrice = left.inventoryMatch?.currentPrice ?? Number.POSITIVE_INFINITY;
     const rightPrice = right.inventoryMatch?.currentPrice ?? Number.POSITIVE_INFINITY;
     if (leftPrice !== rightPrice) {
@@ -564,25 +755,49 @@ function sortAndLimitResults(results) {
   return trimmed;
 }
 
-async function attachInventoryMatches(results) {
+async function attachInventoryMatches(results, requirements = {}) {
   const models = unique(results.map((row) => row.model).filter((model) => MODEL_LISTING_URLS[model]));
   const inventoryEntries = await Promise.all(
     models.map(async (model) => [model, await loadModelInventory(model)])
   );
   const inventoryByModel = Object.fromEntries(inventoryEntries);
+  const profilesByModel = Object.fromEntries(
+    models.map((model) => [model, buildCandidateProfile(results.filter((row) => row.model === model))])
+  );
 
-  const matched = results.map((row) => ({
-    ...row,
-    inventoryMatch: findBestInventoryMatch(row, inventoryByModel[row.model] || []),
-  }));
+  const candidateInventory = models.flatMap((model) =>
+    (inventoryByModel[model] || []).filter((item) => inventoryMatchesCandidateProfile(item, profilesByModel[model]))
+  );
+
+  const verified = await mapWithConcurrency(candidateInventory, VERIFY_CONCURRENCY, async (item) => {
+    const capabilities = await verifyInventoryCapabilities({
+      inventoryVin: item.inventoryVin,
+    });
+    if (!capabilities) {
+      return null;
+    }
+
+    const verifiedRow = createVerifiedInventoryRow(item, capabilities, requirements);
+    if (!meetsTrailerRequirements(verifiedRow, requirements)) {
+      return null;
+    }
+
+    return verifiedRow;
+  });
 
   return {
     source: 'https://perkinsmotors.com',
     checkedAt: new Date().toISOString(),
-    results: sortAndLimitResults(matched),
+    results: sortAndLimitResults(verified.filter(Boolean)),
   };
 }
 
 module.exports = {
+  applyVerifiedCapacities,
   attachInventoryMatches,
+  buildCandidateProfile,
+  findBestInventoryMatch,
+  inventoryMatchesCandidateProfile,
+  meetsTrailerRequirements,
+  scoreInventoryMatch,
 };

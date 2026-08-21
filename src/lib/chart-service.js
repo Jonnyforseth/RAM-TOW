@@ -390,7 +390,7 @@ function pairPayloadRows(towRow, tongueWeight) {
   });
 }
 
-function reverseLookup({ trailerWeight, tongueWeight, modelPreference }) {
+function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference }) {
   const modelFilter = String(modelPreference || '').trim();
   const results = [];
 
@@ -440,12 +440,16 @@ function reverseLookup({ trailerWeight, tongueWeight, modelPreference }) {
         return a.maxPayload - b.maxPayload;
       }
       return (a.payloadGVWR || 0) - (b.payloadGVWR || 0);
-    })
-    .slice(0, 12);
+    });
+}
+
+function reverseLookup({ trailerWeight, tongueWeight, modelPreference }) {
+  return collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference }).slice(0, 12);
 }
 
 module.exports = {
   cleanSpec,
+  collectReverseLookupRows,
   ensureChartTexts,
   findMatches,
   findRawChartHints,

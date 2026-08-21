@@ -189,12 +189,6 @@ body {
   box-shadow: 0 16px 28px rgba(13, 111, 190, 0.22);
 }
 
-.button-secondary {
-  background: #121921;
-  color: #ffffff;
-  box-shadow: 0 12px 22px rgba(18, 25, 33, 0.16);
-}
-
 .microcopy {
   margin: 0;
   color: var(--ink-soft);
@@ -272,12 +266,6 @@ body {
   font-weight: 700;
 }
 
-.override-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
 .result-two-up {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -285,8 +273,7 @@ body {
 }
 
 .metric-card,
-.alternate-card,
-.hint-card {
+.alternate-card {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -316,27 +303,23 @@ body {
   line-height: 1.6;
 }
 
-.alternate-grid,
-.hint-list {
+.alternate-grid {
   display: grid;
   gap: 12px;
 }
 
-.alternate-card h4,
-.hint-card h4 {
+.alternate-card h4 {
   margin: 0 0 8px;
   font-size: 1rem;
 }
 
-.alternate-card p,
-.hint-card p {
+.alternate-card p {
   margin: 0;
   color: var(--ink-soft);
   line-height: 1.6;
 }
 
-.alternate-card p + p,
-.hint-card p + p {
+.alternate-card p + p {
   margin-top: 6px;
 }
 
@@ -372,10 +355,6 @@ body {
   .result-two-up {
     grid-template-columns: 1fr;
   }
-
-  .override-grid {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -391,8 +370,7 @@ body {
   }
 
   .inline-field,
-  .field-grid,
-  .override-grid {
+  .field-grid {
     grid-template-columns: 1fr;
   }
 }
