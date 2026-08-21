@@ -544,6 +544,7 @@ body::before {
 
 .scanner-stage {
   position: relative;
+  overflow: hidden;
   margin-top: 16px;
   min-height: 360px;
   border: 2px solid rgba(240, 225, 203, 0.22);
@@ -553,43 +554,59 @@ body::before {
     #0f1418;
 }
 
-.scanner-image {
+.scanner-video {
   display: block;
   width: 100%;
+  min-height: 360px;
   max-height: 70vh;
-  object-fit: contain;
+  object-fit: cover;
+  background: #0b0f12;
 }
 
-.scanner-stage cropper-canvas,
-.scanner-stage cropper-image,
-.scanner-stage cropper-selection,
-.scanner-stage cropper-shade,
-.scanner-stage cropper-handle,
-.scanner-stage cropper-grid,
-.scanner-stage cropper-crosshair {
-  display: block;
+.scanner-frame {
+  position: absolute;
+  left: 8%;
+  top: 24%;
+  width: 84%;
+  height: 52%;
+  border: 2px solid rgba(234, 214, 182, 0.96);
+  box-shadow:
+    0 0 0 999px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(20, 16, 12, 0.42);
+  pointer-events: none;
 }
 
-.scanner-stage cropper-handle[action='select'],
-.scanner-stage cropper-grid,
-.scanner-stage cropper-crosshair {
-  color: rgba(234, 214, 182, 0.92);
+.scanner-frame::before,
+.scanner-frame::after {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-color: rgba(248, 241, 227, 0.98);
+  border-style: solid;
 }
 
-.scanner-stage cropper-selection {
-  outline: 2px solid rgba(234, 214, 182, 0.96);
-  background: rgba(234, 214, 182, 0.08);
+.scanner-frame::before {
+  left: -2px;
+  top: -2px;
+  border-width: 4px 0 0 4px;
 }
 
-.scanner-stage cropper-shade {
-  color: rgba(0, 0, 0, 0.54);
+.scanner-frame::after {
+  right: -2px;
+  bottom: -2px;
+  border-width: 0 4px 4px 0;
 }
 
-.scanner-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+.scanner-frame-line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 46%;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(234, 214, 182, 0), rgba(234, 214, 182, 0.98), rgba(234, 214, 182, 0));
+  box-shadow: 0 0 18px rgba(234, 214, 182, 0.32);
 }
 
 .scanner-status {
@@ -658,15 +675,8 @@ body::before {
     padding: 16px;
   }
 
+  .scanner-video,
   .scanner-stage {
     min-height: 420px;
-  }
-
-  .scanner-actions {
-    justify-content: stretch;
-  }
-
-  .scanner-actions .button {
-    width: 100%;
   }
 }

@@ -9,12 +9,10 @@ const towDetail = document.querySelector('#tow-detail');
 const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
-const vinScanInput = document.querySelector('#vin-scan-input');
 const vinScanModal = document.querySelector('#vin-scan-modal');
 const vinScanCloseButton = document.querySelector('#vin-scan-close');
-const vinScanReadButton = document.querySelector('#vin-scan-read');
 const vinScanModalStatus = document.querySelector('#vin-scan-modal-status');
-const vinCropImage = document.querySelector('#vin-crop-image');
+const vinScanVideo = document.querySelector('#vin-scan-video');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -30,6 +28,8 @@ const reverseInputs = [
 
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+const VIN_SCAN_FRAME = { left: 0.08, top: 0.24, width: 0.84, height: 0.52 };
+const VIN_SCAN_OCR_INTERVAL_MS = 1400;
 const VIN_TRANSLITERATION = {
   A: 1,
   B: 2,
@@ -77,8 +77,12 @@ const VIN_OCR_SUBSTITUTIONS = {
 
 let vinOcrWorker = null;
 let vinOcrWorkerReady = null;
-let vinCropper = null;
-let vinScanObjectUrl = null;
+let vinScanReader = null;
+let vinScanControls = null;
+let vinScanSessionToken = 0;
+let vinScanOcrTimeout = null;
+let vinScanOcrRunning = false;
+let vinScanResultLocked = false;
 
 function renderInsight(item) {
   return `
@@ -380,127 +384,226 @@ function clampRegion(region, width, height) {
   };
 }
 
-function revokeVinScanObjectUrl() {
-  if (!vinScanObjectUrl) {
-    return;
+function stopVinScanVideoStream() {
+  const stream = vinScanVideo?.srcObject;
+  if (stream?.getTracks) {
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
   }
 
-  URL.revokeObjectURL(vinScanObjectUrl);
-  vinScanObjectUrl = null;
+  if (vinScanVideo) {
+    vinScanVideo.pause?.();
+    vinScanVideo.srcObject = null;
+    vinScanVideo.removeAttribute('src');
+  }
 }
 
-function getCropperConstructor() {
-  return window.Cropper?.default || window.Cropper || null;
-}
+function stopVinLiveScanner() {
+  vinScanSessionToken += 1;
+  vinScanResultLocked = false;
+  vinScanOcrRunning = false;
 
-function destroyVinCropper() {
-  if (!vinCropper) {
-    return;
+  if (vinScanOcrTimeout) {
+    clearTimeout(vinScanOcrTimeout);
+    vinScanOcrTimeout = null;
   }
 
-  try {
-    vinCropper.destroy?.();
-  } catch (_error) {
-    // Ignore cropper teardown errors.
+  if (vinScanControls?.stop) {
+    try {
+      vinScanControls.stop();
+    } catch (_error) {
+      // Ignore scanner stop errors.
+    }
   }
 
-  vinCropper = null;
+  vinScanControls = null;
+  vinScanReader = null;
+  stopVinScanVideoStream();
 }
 
 function closeVinScanModal() {
-  destroyVinCropper();
+  stopVinLiveScanner();
   hideStatus(vinScanModalStatus);
   vinScanModal?.classList.add('hidden');
   vinScanModal?.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('modal-open');
-  if (vinCropImage) {
-    vinCropImage.removeAttribute('src');
-  }
-  if (vinScanReadButton) {
-    vinScanReadButton.disabled = false;
-  }
-  if (vinScanInput) {
-    vinScanInput.value = '';
-  }
-  revokeVinScanObjectUrl();
 }
 
-function seedVinCropSelection() {
-  const selection = vinCropper?.getCropperSelection?.();
-  const container = vinCropper?.container;
-  if (!selection?.$change || !container) {
-    return;
+function buildLiveScanFrameCanvas() {
+  if (!vinScanVideo || vinScanVideo.readyState < 2) {
+    return null;
   }
 
-  const containerWidth = container.clientWidth || vinCropImage?.clientWidth || 0;
-  const containerHeight = container.clientHeight || vinCropImage?.clientHeight || 0;
-
-  if (!containerWidth || !containerHeight) {
-    return;
+  const videoWidth = vinScanVideo.videoWidth || 0;
+  const videoHeight = vinScanVideo.videoHeight || 0;
+  if (!videoWidth || !videoHeight) {
+    return null;
   }
 
-  const width = containerWidth * 0.86;
-  const height = containerHeight * 0.54;
-  const left = (containerWidth - width) / 2;
-  const top = containerHeight * 0.26;
-  selection.$change(left, top, width, height);
+  const region = clampRegion({
+    left: videoWidth * VIN_SCAN_FRAME.left,
+    top: videoHeight * VIN_SCAN_FRAME.top,
+    width: videoWidth * VIN_SCAN_FRAME.width,
+    height: videoHeight * VIN_SCAN_FRAME.height,
+  }, videoWidth, videoHeight);
+
+  const canvas = createCanvas(region.width, region.height);
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(
+    vinScanVideo,
+    region.left,
+    region.top,
+    region.width,
+    region.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+  return canvas;
 }
 
-async function openVinCropModal(file) {
-  if (!file) {
+async function completeVinLiveScan(vin, sourceLabel) {
+  if (vinScanResultLocked) {
     return;
   }
 
-  const CropperCtor = getCropperConstructor();
-  if (!CropperCtor) {
-    showStatus(vinStatus, 'The VIN photo cropper did not load correctly on this device.', true);
-    return;
+  vinScanResultLocked = true;
+  showStatus(vinScanModalStatus, `VIN found from ${sourceLabel}. Loading towing data...`);
+  closeVinScanModal();
+  await processDetectedVin(vin);
+}
+
+function scheduleVinLiveOcr(sessionToken, delay = VIN_SCAN_OCR_INTERVAL_MS) {
+  if (vinScanOcrTimeout) {
+    clearTimeout(vinScanOcrTimeout);
   }
 
-  if (!vinCropImage || !vinScanModal) {
-    showStatus(vinStatus, 'The VIN photo tool is not available in this page build.', true);
-    return;
+  vinScanOcrTimeout = window.setTimeout(async () => {
+    if (sessionToken !== vinScanSessionToken || vinScanResultLocked || vinScanOcrRunning) {
+      if (sessionToken === vinScanSessionToken && !vinScanResultLocked) {
+        scheduleVinLiveOcr(sessionToken, delay);
+      }
+      return;
+    }
+
+    const frameCanvas = buildLiveScanFrameCanvas();
+    if (!frameCanvas) {
+      scheduleVinLiveOcr(sessionToken, delay);
+      return;
+    }
+
+    vinScanOcrRunning = true;
+
+    try {
+      const barcodeVin = await readVinFromBarcodeCanvas(frameCanvas);
+      if (barcodeVin) {
+        await completeVinLiveScan(barcodeVin, 'barcode');
+        return;
+      }
+
+      const textVin = await readVinFromCanvas(frameCanvas);
+      if (textVin) {
+        await completeVinLiveScan(textVin, 'VIN text');
+        return;
+      }
+    } catch (_error) {
+      // Keep scanning until a valid VIN is found or the user closes the modal.
+    } finally {
+      vinScanOcrRunning = false;
+    }
+
+    if (sessionToken === vinScanSessionToken && !vinScanResultLocked) {
+      scheduleVinLiveOcr(sessionToken, delay);
+    }
+  }, delay);
+}
+
+async function startVinLiveScanner(sessionToken) {
+  const zxing = window.ZXingBrowser;
+  if (!zxing?.BrowserMultiFormatReader) {
+    throw new Error('The live VIN scanner did not load correctly.');
   }
 
-  destroyVinCropper();
-  revokeVinScanObjectUrl();
-  hideStatus(vinScanModalStatus);
+  if (!vinScanVideo) {
+    throw new Error('The live VIN scanner video preview is missing from this page.');
+  }
 
-  showStatus(vinStatus, 'Photo loaded. Frame the white sticker, then tap Read VIN.');
-  vinResults.classList.add('hidden');
-  vinScanModal.classList.remove('hidden');
-  vinScanModal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('modal-open');
-
-  vinScanObjectUrl = URL.createObjectURL(file);
-  const loadPromise = new Promise((resolve, reject) => {
-    vinCropImage.onload = () => resolve();
-    vinCropImage.onerror = () => reject(new Error('Could not open that photo. Try taking another picture of the door sticker.'));
+  const reader = new zxing.BrowserMultiFormatReader(undefined, {
+    delayBetweenScanAttempts: 220,
+    delayBetweenScanSuccess: 800,
+    tryPlayVideoTimeout: 5000,
   });
 
-  vinCropImage.src = vinScanObjectUrl;
+  reader.possibleFormats = [
+    zxing.BarcodeFormat?.CODE_39,
+    zxing.BarcodeFormat?.CODE_128,
+    zxing.BarcodeFormat?.PDF_417,
+  ].filter(Boolean);
+
+  vinScanReader = reader;
+
+  const controls = await reader.decodeFromConstraints({
+    audio: false,
+    video: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
+  }, vinScanVideo, (result) => {
+    if (sessionToken !== vinScanSessionToken || vinScanResultLocked) {
+      return;
+    }
+
+    const text = result?.getText?.() || result?.text || '';
+    const vin = extractVinFromDecodedText(text);
+    if (vin) {
+      void completeVinLiveScan(vin, 'barcode');
+    }
+  });
+
+  if (sessionToken !== vinScanSessionToken) {
+    controls.stop();
+    return;
+  }
+
+  vinScanControls = controls;
+  scheduleVinLiveOcr(sessionToken, 900);
+}
+
+async function openVinScanModal() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showStatus(vinStatus, 'This browser does not support live camera scanning. Type the VIN manually.', true);
+    return;
+  }
+
+  stopVinLiveScanner();
+  hideStatus(vinScanModalStatus);
+  vinResults.classList.add('hidden');
+  vinScanModal?.classList.remove('hidden');
+  vinScanModal?.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  showStatus(vinStatus, 'Launching live VIN scanner...');
+  showStatus(vinScanModalStatus, 'Starting camera...');
+
+  const sessionToken = ++vinScanSessionToken;
 
   try {
-    await loadPromise;
-    vinCropper = new CropperCtor(vinCropImage, {
-      container: vinCropImage.parentElement,
-      background: false,
-      guides: true,
-      center: true,
-      modal: true,
-      movable: true,
-      zoomable: true,
-      rotatable: false,
-      scalable: false,
-      dragMode: 'move',
-      autoCropArea: 0.88,
-    });
-
-    window.setTimeout(seedVinCropSelection, 60);
-    showStatus(vinScanModalStatus, 'Drag the frame around the white sticker. We will read the VIN automatically from that crop.');
+    await startVinLiveScanner(sessionToken);
+    if (sessionToken !== vinScanSessionToken) {
+      return;
+    }
+    showStatus(vinScanModalStatus, 'Point the camera at the VIN barcode or the printed VIN line on the white door sticker. We are scanning live.');
   } catch (error) {
     closeVinScanModal();
-    showStatus(vinStatus, error.message || 'Could not open that photo.', true);
+    showStatus(
+      vinStatus,
+      error?.name === 'NotAllowedError'
+        ? 'Camera access was blocked. Allow camera permission and try Scan VIN again.'
+        : error.message || 'Could not start the live VIN scanner on this device.',
+      true
+    );
   }
 }
 
@@ -732,20 +835,6 @@ async function readVinFromCanvas(frameCanvas) {
   throw new Error('Could not read a clean VIN from that crop. Try a tighter crop around the white sticker or take a brighter photo.');
 }
 
-async function buildVinSelectionCanvas() {
-  const selection = vinCropper?.getCropperSelection?.();
-  if (!selection?.$toCanvas) {
-    throw new Error('The photo cropper is not ready yet. Re-open the photo and try again.');
-  }
-
-  const canvas = await selection.$toCanvas({ width: 1800 });
-  if (!canvas) {
-    throw new Error('Could not prepare that photo crop. Try another photo.');
-  }
-
-  return canvas;
-}
-
 async function processDetectedVin(vin) {
   vinInput.value = vin;
   showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
@@ -757,44 +846,6 @@ async function processDetectedVin(vin) {
     renderVinResponse(response);
   } catch (error) {
     showStatus(vinStatus, error.message, true);
-  }
-}
-
-function triggerVinPhotoCapture() {
-  if (!vinScanInput) {
-    showStatus(vinStatus, 'This device does not support VIN photo capture here. Type the VIN manually.', true);
-    return;
-  }
-
-  showStatus(vinStatus, 'Take a clear photo of the white door-jamb sticker. We will let you crop the sticker before reading the VIN.');
-  vinScanInput.value = '';
-  vinScanInput.click();
-}
-
-async function handleVinScanRead() {
-  if (!vinCropper) {
-    showStatus(vinScanModalStatus, 'Open a VIN photo first.', true);
-    return;
-  }
-
-  if (vinScanReadButton) {
-    vinScanReadButton.disabled = true;
-  }
-
-  showStatus(vinScanModalStatus, 'Reading the sticker. Trying barcode first, then VIN text...');
-
-  try {
-    const canvas = await buildVinSelectionCanvas();
-    const barcodeVin = await readVinFromBarcodeCanvas(canvas);
-    const vin = barcodeVin || await readVinFromCanvas(canvas);
-    closeVinScanModal();
-    await processDetectedVin(vin);
-  } catch (error) {
-    showStatus(vinScanModalStatus, error.message || 'Could not read the VIN from that photo.', true);
-  } finally {
-    if (vinScanReadButton) {
-      vinScanReadButton.disabled = false;
-    }
   }
 }
 
@@ -845,28 +896,13 @@ vinForm.addEventListener('submit', async (event) => {
 
 if (vinScanButton) {
   vinScanButton.addEventListener('click', () => {
-    triggerVinPhotoCapture();
+    void openVinScanModal();
   });
 }
 
 if (vinScanCloseButton) {
   vinScanCloseButton.addEventListener('click', () => {
     closeVinScanModal();
-  });
-}
-
-if (vinScanReadButton) {
-  vinScanReadButton.addEventListener('click', () => {
-    void handleVinScanRead();
-  });
-}
-
-if (vinScanInput) {
-  vinScanInput.addEventListener('change', (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      void openVinCropModal(file);
-    }
   });
 }
 
