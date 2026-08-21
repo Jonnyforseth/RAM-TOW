@@ -553,6 +553,20 @@ body::before {
   display: block;
 }
 
+.scanner-fallback {
+  overflow: hidden;
+  margin-top: 16px;
+  border: 2px solid rgba(240, 225, 203, 0.22);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    #0f1418;
+}
+
+.scanner-fallback > div {
+  min-height: 320px;
+}
+
 .scanner-frame {
   position: absolute;
   inset: 16% 10%;

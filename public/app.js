@@ -10,6 +10,8 @@ const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
 const scannerModal = document.querySelector('#scanner-modal');
+const scannerViewport = document.querySelector('.scanner-viewport');
+const scannerFallbackHost = document.querySelector('#scanner-fallback-host');
 const scannerVideo = document.querySelector('#scanner-video');
 const scannerStatus = document.querySelector('#scanner-status');
 const scannerCloseButton = document.querySelector('#scanner-close');
@@ -32,6 +34,8 @@ let scannerDetector = null;
 let scannerLoopHandle = 0;
 let scannerActive = false;
 let scannerBusy = false;
+let scannerMode = null;
+let html5Scanner = null;
 
 function renderInsight(item) {
   return `
@@ -186,6 +190,16 @@ function cancelScannerLoop() {
   }
 }
 
+function setScannerPresentation(mode) {
+  scannerMode = mode;
+  if (scannerViewport) {
+    scannerViewport.classList.toggle('hidden', mode === 'html5');
+  }
+  if (scannerFallbackHost) {
+    scannerFallbackHost.classList.toggle('hidden', mode !== 'html5');
+  }
+}
+
 function stopScannerStream() {
   if (!scannerStream) {
     return;
@@ -196,19 +210,67 @@ function stopScannerStream() {
   scannerStream = null;
 }
 
-function closeScannerModal() {
+async function stopHtml5Scanner() {
+  if (!html5Scanner) {
+    if (scannerFallbackHost) {
+      scannerFallbackHost.innerHTML = '';
+    }
+    return;
+  }
+
+  try {
+    if (html5Scanner.isScanning) {
+      await html5Scanner.stop();
+    }
+  } catch (_error) {
+    // Ignore teardown errors and keep cleaning up.
+  }
+
+  try {
+    html5Scanner.clear();
+  } catch (_error) {
+    // Ignore clear errors if the scanner surface is already gone.
+  }
+
+  html5Scanner = null;
+  if (scannerFallbackHost) {
+    scannerFallbackHost.innerHTML = '';
+  }
+}
+
+async function closeScannerModal() {
   scannerActive = false;
   scannerBusy = false;
   cancelScannerLoop();
   stopScannerStream();
+  await stopHtml5Scanner();
   if (scannerVideo) {
     scannerVideo.pause();
     scannerVideo.srcObject = null;
   }
+  setScannerPresentation('native');
   if (scannerModal) {
     scannerModal.classList.add('hidden');
     scannerModal.setAttribute('aria-hidden', 'true');
   }
+}
+
+function isAppleMobileBrowser() {
+  const agent = navigator.userAgent || '';
+  return /iPhone|iPad|iPod/i.test(agent);
+}
+
+function getHtml5VinFormats() {
+  const formats = window.Html5QrcodeSupportedFormats;
+  if (!formats) {
+    return undefined;
+  }
+
+  return [
+    formats.CODE_39,
+    formats.CODE_128,
+    formats.PDF_417,
+  ].filter((value) => value != null);
 }
 
 async function ensureScannerDetector() {
@@ -234,8 +296,53 @@ async function ensureScannerDetector() {
   return scannerDetector;
 }
 
+async function startHtml5FallbackScanner() {
+  if (!window.Html5Qrcode) {
+    throw new Error('The iPhone-compatible VIN scanner did not load correctly.');
+  }
+  if (!scannerFallbackHost) {
+    throw new Error('Scanner surface is missing.');
+  }
+
+  setScannerPresentation('html5');
+  scannerFallbackHost.innerHTML = '<div id="scanner-reader"></div>';
+
+  const formatsToSupport = getHtml5VinFormats();
+  html5Scanner = new window.Html5Qrcode('scanner-reader', {
+    verbose: false,
+    formatsToSupport,
+    useBarCodeDetectorIfSupported: false,
+  });
+
+  const scanBox = (viewfinderWidth, viewfinderHeight) => ({
+    width: Math.max(240, Math.floor(viewfinderWidth * 0.84)),
+    height: Math.max(96, Math.floor(viewfinderHeight * 0.28)),
+  });
+
+  await html5Scanner.start(
+    { facingMode: 'environment' },
+    {
+      fps: 10,
+      qrbox: scanBox,
+      aspectRatio: 1.333334,
+      disableFlip: false,
+    },
+    async (decodedText) => {
+      const vin = normalizeVinCandidate(decodedText);
+      if (vin) {
+        await processDetectedVin(vin);
+      }
+    },
+    () => {
+      // Ignore frame-level decode misses while scanning live.
+    }
+  );
+
+  scannerActive = true;
+}
+
 async function processDetectedVin(vin) {
-  closeScannerModal();
+  await closeScannerModal();
   vinInput.value = vin;
   showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
   vinResults.classList.add('hidden');
@@ -282,7 +389,43 @@ async function scanFrame() {
 }
 
 async function openScannerModal() {
+  hideStatus(vinStatus);
+  if (scannerModal) {
+    scannerModal.classList.remove('hidden');
+    scannerModal.setAttribute('aria-hidden', 'false');
+  }
+  setScannerPresentation('native');
+  setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+
+  const shouldPreferHtml5Fallback = isAppleMobileBrowser() || !('BarcodeDetector' in window);
+
+  if (shouldPreferHtml5Fallback) {
+    try {
+      setScannerStatus('Starting iPhone-compatible scanner...');
+      await startHtml5FallbackScanner();
+      setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+      return;
+    } catch (error) {
+      await closeScannerModal();
+      showStatus(vinStatus, error.message || 'Could not start the VIN scanner on this phone.', true);
+      return;
+    }
+  }
+
   if (!navigator.mediaDevices?.getUserMedia) {
+    if (window.Html5Qrcode) {
+      try {
+        setScannerStatus('Starting fallback VIN scanner...');
+        await startHtml5FallbackScanner();
+        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+        return;
+      } catch (error) {
+        await closeScannerModal();
+        showStatus(vinStatus, error.message || 'This device does not allow live camera access here.', true);
+        return;
+      }
+    }
+    await closeScannerModal();
     showStatus(vinStatus, 'This device does not allow live camera access here. Type the VIN manually.', true);
     return;
   }
@@ -290,16 +433,22 @@ async function openScannerModal() {
   try {
     await ensureScannerDetector();
   } catch (error) {
+    if (window.Html5Qrcode) {
+      try {
+        setScannerStatus('Starting fallback VIN scanner...');
+        await startHtml5FallbackScanner();
+        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+        return;
+      } catch (fallbackError) {
+        await closeScannerModal();
+        showStatus(vinStatus, fallbackError.message || error.message || 'VIN barcode scanning is not available on this browser.', true);
+        return;
+      }
+    }
+    await closeScannerModal();
     showStatus(vinStatus, error.message || 'VIN barcode scanning is not available on this browser.', true);
     return;
   }
-
-  hideStatus(vinStatus);
-  if (scannerModal) {
-    scannerModal.classList.remove('hidden');
-    scannerModal.setAttribute('aria-hidden', 'false');
-  }
-  setScannerStatus('Point the camera at the VIN barcode and hold steady.');
 
   try {
     scannerStream = await navigator.mediaDevices.getUserMedia({
@@ -318,10 +467,24 @@ async function openScannerModal() {
     scannerVideo.srcObject = scannerStream;
     await scannerVideo.play();
     scannerActive = true;
+    scannerMode = 'native';
     cancelScannerLoop();
     scannerLoopHandle = requestAnimationFrame(scanFrame);
   } catch (error) {
-    closeScannerModal();
+    if (window.Html5Qrcode) {
+      try {
+        stopScannerStream();
+        setScannerStatus('Native camera access failed. Trying fallback scanner...');
+        await startHtml5FallbackScanner();
+        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+        return;
+      } catch (fallbackError) {
+        await closeScannerModal();
+        showStatus(vinStatus, fallbackError.message || error.message || 'Could not open the camera. Type the VIN manually.', true);
+        return;
+      }
+    }
+    await closeScannerModal();
     showStatus(vinStatus, error.message || 'Could not open the camera. Type the VIN manually.', true);
   }
 }
@@ -372,20 +535,20 @@ vinForm.addEventListener('submit', async (event) => {
 
 if (vinScanButton) {
   vinScanButton.addEventListener('click', () => {
-    openScannerModal();
+    void openScannerModal();
   });
 }
 
 if (scannerCloseButton) {
   scannerCloseButton.addEventListener('click', () => {
-    closeScannerModal();
+    void closeScannerModal();
   });
 }
 
 if (scannerModal) {
   scannerModal.addEventListener('click', (event) => {
     if (event.target === scannerModal) {
-      closeScannerModal();
+      void closeScannerModal();
     }
   });
 }
@@ -469,11 +632,11 @@ window.addEventListener('pageshow', () => {
 });
 
 window.addEventListener('beforeunload', () => {
-  closeScannerModal();
+  void closeScannerModal();
 });
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && scannerActive) {
-    closeScannerModal();
+    void closeScannerModal();
   }
 });
