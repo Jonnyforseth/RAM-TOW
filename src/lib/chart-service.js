@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { PDFParse } = require('pdf-parse');
+const { createPdfParser } = require('./pdf-runtime');
 const { PDF_PATHS, HITCH_LIMITS, getTowRows, getPayloadRows } = require('../data/chart-data');
 
 const towRows = getTowRows();
@@ -306,7 +306,7 @@ async function ensureChartTexts() {
       chartCache.texts[key] = '';
       continue;
     }
-    const parser = new PDFParse({ data: fs.readFileSync(path) });
+    const parser = await createPdfParser(fs.readFileSync(path));
     const result = await parser.getText();
     chartCache.texts[key] = result.text;
     await parser.destroy();

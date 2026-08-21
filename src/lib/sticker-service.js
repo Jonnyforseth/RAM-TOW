@@ -6,7 +6,7 @@ const {
   normalizeEngine,
   normalizeRearWheels,
 } = require('./chart-service');
-const { PDFParse } = require('pdf-parse');
+const { createPdfParser } = require('./pdf-runtime');
 
 const WINDOW_STICKER_BASE_URL = 'https://www.chrysler.com/hostd/windowsticker/getWindowStickerPdf.do?vin=';
 const NHTSA_BASE_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/';
@@ -32,7 +32,7 @@ async function fetchStickerText(vin) {
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  const parser = new PDFParse({ data: buffer });
+  const parser = await createPdfParser(buffer);
   const result = await parser.getText();
   await parser.destroy();
 
