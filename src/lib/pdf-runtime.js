@@ -58,43 +58,143 @@ function ensurePdfRuntimeGlobals() {
   }
 }
 
-let pdfParseModulePromise = null;
-let pdfWorkerModulePromise = null;
-
-async function getPdfWorkerModule() {
-  ensurePdfRuntimeGlobals();
-
-  if (!pdfWorkerModulePromise) {
-    pdfWorkerModulePromise = import('pdf-parse/worker');
+function toUint8Array(data) {
+  if (typeof Buffer !== 'undefined' && data instanceof Buffer) {
+    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   }
-
-  return pdfWorkerModulePromise;
+  if (data instanceof Uint8Array) {
+    return data;
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+  throw new Error('Unsupported PDF input type.');
 }
 
-async function getPdfParseModule() {
+let pdfjsModulePromise = null;
+
+function isNodeRuntime() {
+  return typeof process === 'object' && !!process?.versions?.node;
+}
+
+async function getPdfjsModule() {
   ensurePdfRuntimeGlobals();
 
-  if (!pdfParseModulePromise) {
-    pdfParseModulePromise = (async () => {
-      const workerModule = await getPdfWorkerModule();
-      const module = await import('pdf-parse');
-      module.PDFParse.setWorker(workerModule.getData());
-      return {
-        ...module,
-        CanvasFactory: workerModule.CanvasFactory,
-      };
+  if (!pdfjsModulePromise) {
+    pdfjsModulePromise = (async () => {
+      const pdfModulePath = isNodeRuntime()
+        ? 'pdfjs-dist/legacy/build/pdf.mjs'
+        : 'pdfjs-dist/build/pdf.mjs';
+      const workerModulePath = isNodeRuntime()
+        ? 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+        : 'pdfjs-dist/build/pdf.worker.mjs';
+
+      const [pdfjs, pdfjsWorker] = await Promise.all([
+        import(pdfModulePath),
+        import(workerModulePath),
+      ]);
+
+      // Preload the worker into the main thread so serverless runtimes do not
+      // try to resolve ./pdf.worker.mjs dynamically at request time.
+      globalThis.pdfjsWorker = pdfjsWorker;
+
+      return pdfjs;
     })();
   }
 
-  return pdfParseModulePromise;
+  return pdfjsModulePromise;
+}
+
+class PdfTextParser {
+  constructor(data) {
+    this.data = toUint8Array(data);
+    this.doc = null;
+    this.pdfjs = null;
+  }
+
+  async load() {
+    if (this.doc) {
+      return this.doc;
+    }
+
+    this.pdfjs = await getPdfjsModule();
+    const loadingTask = this.pdfjs.getDocument({
+      data: this.data,
+      verbosity: this.pdfjs.VerbosityLevel.ERRORS,
+      disableFontFace: true,
+      isEvalSupported: false,
+      useSystemFonts: false,
+    });
+
+    this.doc = await loadingTask.promise;
+    return this.doc;
+  }
+
+  async getText() {
+    const doc = await this.load();
+    const pages = [];
+    let text = '';
+
+    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+      const page = await doc.getPage(pageNumber);
+      const textContent = await page.getTextContent({
+        disableNormalization: false,
+        includeMarkedContent: false,
+      });
+
+      const pageText = [];
+      let lastY = null;
+
+      for (const item of textContent.items) {
+        if (!item || typeof item.str !== 'string') {
+          continue;
+        }
+
+        const y = Array.isArray(item.transform) ? item.transform[5] : null;
+        if (lastY !== null && y !== null && Math.abs(lastY - y) > 2) {
+          pageText.push('\n');
+        }
+
+        pageText.push(item.str);
+
+        if (item.hasEOL) {
+          pageText.push('\n');
+        } else {
+          pageText.push(' ');
+        }
+
+        lastY = y;
+      }
+
+      const normalizedPageText = pageText.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+      pages.push({
+        num: pageNumber,
+        text: normalizedPageText,
+      });
+      text += `${normalizedPageText}\n\n`;
+
+      page.cleanup();
+    }
+
+    return {
+      pages,
+      text: text.trim(),
+      total: doc.numPages,
+    };
+  }
+
+  async destroy() {
+    if (!this.doc) {
+      return;
+    }
+
+    await this.doc.destroy();
+    this.doc = null;
+  }
 }
 
 async function createPdfParser(data) {
-  const module = await getPdfParseModule();
-  return new module.PDFParse({
-    data,
-    CanvasFactory: module.CanvasFactory,
-  });
+  return new PdfTextParser(data);
 }
 
 module.exports = {
