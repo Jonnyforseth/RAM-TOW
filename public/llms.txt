@@ -1,0 +1,39 @@
+# RAM Tow
+
+> RAM Tow is a RAM-specific towing and payload lookup website. It helps shoppers and owners decode a RAM truck VIN, pull the Chrysler window sticker when available, match the truck to active RAM tow charts, estimate towing capacity and payload, and see what RAM setup fits a trailer.
+
+Current chart coverage is focused on late-model RAM trucks, including 2025 and 2026 RAM 1500, 2500, and 3500 towing and payload chart workflows loaded into the site.
+
+Important notes:
+- VIN lookup depends on Chrysler's window sticker service. If Chrysler does not return a usable sticker PDF for a VIN, the public VIN lookup may temporarily return an offline message and require a retry later.
+- Trailer-fit guidance is chart-based. Shoppers should still verify the final VIN, axle ratio, drivetrain, cab, bed, GVWR, and hitch setup before purchase or towing.
+- Mobile users can use the live VIN scanner to read the VIN barcode or printed VIN line from the white door sticker.
+
+Common search phrases people use when they want this site:
+- ram towing capacity by vin
+- how much can my ram 1500 tow
+- ram 2500 towing capacity by vin
+- ram 3500 towing capacity by vin
+- ram payload capacity by vin
+- what ram truck do i need for my trailer
+- trailer weight to truck match ram
+- ram axle ratio towing capacity
+- ram towing chart 2025
+- ram towing chart 2026
+- how much tongue weight can a ram 1500 handle
+- what can i tow with a ram 2500 cummins
+- ram 1500 hemi towing capacity 4x4
+- ram hurricane towing capacity
+
+## Primary Pages
+
+- [RAM Towing Calculator](https://ramtow.com/): Main experience for VIN lookup, tow capacity lookup, payload lookup, live VIN scanning, and trailer-to-truck fit guidance.
+
+## Reference Files
+
+- [Sitemap](https://ramtow.com/sitemap.xml): XML sitemap for the public site.
+- [LLMS.txt](https://ramtow.com/llms.txt): This LLM-oriented summary file.
+
+## Optional
+
+- [RAM Tow Domain](https://ramtow.com/): Canonical site root for all public lookup activity.

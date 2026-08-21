@@ -126,6 +126,44 @@ body::before {
   margin-top: 20px;
 }
 
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding: 14px 18px;
+  border: 2px solid rgba(50, 41, 34, 0.22);
+  border-radius: 4px;
+  background: rgba(251, 248, 242, 0.78);
+  box-shadow: 0 8px 20px rgba(40, 28, 18, 0.08);
+}
+
+.site-footer p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.footer-links a {
+  color: var(--red-deep);
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
 .card {
   position: relative;
   overflow: hidden;
@@ -630,6 +668,11 @@ body::before {
 
   .page-shell {
     width: min(100vw - 22px, 100%);
+  }
+
+  .site-footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
