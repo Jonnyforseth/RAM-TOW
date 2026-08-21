@@ -10,12 +10,9 @@ const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
 const scannerModal = document.querySelector('#scanner-modal');
-const scannerViewport = document.querySelector('.scanner-viewport');
-const scannerFallbackHost = document.querySelector('#scanner-fallback-host');
 const scannerVideo = document.querySelector('#scanner-video');
 const scannerStatus = document.querySelector('#scanner-status');
 const scannerCloseButton = document.querySelector('#scanner-close');
-const scannerOcrButton = document.querySelector('#scanner-ocr-button');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -29,15 +26,60 @@ const reverseInputs = [
   document.querySelector('#model-preference'),
 ];
 
-const VIN_BARCODE_FORMATS = ['code_39', 'code_128', 'pdf417'];
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
+const VIN_OCR_INTERVAL_MS = 1200;
+const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+const VIN_TRANSLITERATION = {
+  A: 1,
+  B: 2,
+  C: 3,
+  D: 4,
+  E: 5,
+  F: 6,
+  G: 7,
+  H: 8,
+  J: 1,
+  K: 2,
+  L: 3,
+  M: 4,
+  N: 5,
+  P: 7,
+  R: 9,
+  S: 2,
+  T: 3,
+  U: 4,
+  V: 5,
+  W: 6,
+  X: 7,
+  Y: 8,
+  Z: 9,
+};
+const VIN_OCR_SUBSTITUTIONS = {
+  0: ['0', 'O', 'Q'],
+  1: ['1', 'I', 'L'],
+  2: ['2', 'Z'],
+  4: ['4', 'A'],
+  5: ['5', 'S'],
+  6: ['6', 'G'],
+  7: ['7', 'T'],
+  8: ['8', 'B'],
+  A: ['A', '4'],
+  B: ['B', '8'],
+  G: ['G', '6'],
+  L: ['L', '1'],
+  O: ['O', '0'],
+  Q: ['Q', '0'],
+  S: ['S', '5'],
+  T: ['T', '7'],
+  Z: ['Z', '2'],
+};
+
 let scannerStream = null;
-let scannerDetector = null;
 let scannerLoopHandle = 0;
 let scannerActive = false;
 let scannerBusy = false;
-let scannerMode = null;
-let html5Scanner = null;
+let scannerLastAttemptAt = 0;
+let scannerMissCount = 0;
 let vinOcrWorker = null;
 let vinOcrWorkerReady = null;
 
@@ -171,14 +213,107 @@ function renderVinResponse(response) {
   vinResults.classList.remove('hidden');
 }
 
-function normalizeVinCandidate(value) {
+function normalizeManualVin(value) {
   const cleaned = String(value || '')
     .toUpperCase()
     .replace(/[OQ]/g, '0')
-    .replace(/I/g, '1')
+    .replace(/[IL]/g, '1')
     .replace(/[^A-Z0-9]/g, '');
-  const match = cleaned.match(/[A-HJ-NPR-Z0-9]{17}/);
-  return match ? match[0] : null;
+
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(cleaned) ? cleaned : null;
+}
+
+function transliterateVinCharacter(character) {
+  if (/[0-9]/.test(character)) {
+    return Number(character);
+  }
+  return VIN_TRANSLITERATION[character] ?? null;
+}
+
+function calculateVinCheckDigit(vin) {
+  let total = 0;
+  for (let index = 0; index < vin.length; index += 1) {
+    const value = transliterateVinCharacter(vin[index]);
+    if (value == null) {
+      return null;
+    }
+    total += value * VIN_CHECK_WEIGHTS[index];
+  }
+  const remainder = total % 11;
+  return remainder === 10 ? 'X' : String(remainder);
+}
+
+function isValidVin(vin) {
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin) && calculateVinCheckDigit(vin) === vin[8];
+}
+
+function scoreVinCandidate(vin, replacements) {
+  let score = 100 - (replacements * 8);
+  if (vin.startsWith('1C6') || vin.startsWith('3C6')) {
+    score += 40;
+  }
+  return score;
+}
+
+function generateVinVariants(candidate) {
+  const sanitized = String(candidate || '')
+    .toUpperCase()
+    .replace(/[|]/g, 'I')
+    .replace(/[“”"]/g, '')
+    .replace(/[‘’']/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+
+  if (sanitized.length !== 17) {
+    return [];
+  }
+
+  const positions = [];
+  for (let index = 0; index < sanitized.length; index += 1) {
+    const options = VIN_OCR_SUBSTITUTIONS[sanitized[index]];
+    if (options?.length > 1) {
+      positions.push({ index, options });
+    }
+  }
+
+  const variants = new Map();
+  const stack = [{ chars: sanitized.split(''), position: 0, replacements: 0 }];
+  const maxReplacements = 3;
+  const maxVariants = 48;
+
+  while (stack.length && variants.size < maxVariants) {
+    const current = stack.pop();
+    const vin = current.chars.join('');
+    if (/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
+      const existing = variants.get(vin);
+      if (existing == null || current.replacements < existing) {
+        variants.set(vin, current.replacements);
+      }
+    }
+
+    for (let offset = current.position; offset < positions.length; offset += 1) {
+      if (current.replacements >= maxReplacements) {
+        break;
+      }
+
+      const { index, options } = positions[offset];
+      for (const option of options) {
+        if (option === current.chars[index]) {
+          continue;
+        }
+        const nextChars = current.chars.slice();
+        nextChars[index] = option;
+        stack.push({
+          chars: nextChars,
+          position: offset + 1,
+          replacements: current.replacements + 1,
+        });
+      }
+    }
+  }
+
+  return Array.from(variants.entries())
+    .filter(([vin]) => isValidVin(vin))
+    .map(([vin, replacements]) => ({ vin, replacements }));
 }
 
 function extractVinFromOcrText(value) {
@@ -190,23 +325,34 @@ function extractVinFromOcrText(value) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const labeled = text.match(/VIN[:\s-]*([A-Z0-9OQI]{17,20})/);
-  if (labeled) {
-    const vin = normalizeVinCandidate(labeled[1]);
-    if (vin) {
-      return vin;
+  const rawCandidates = [];
+  const labeledMatches = text.match(/VIN[:\s-]*[A-Z0-9]{14,22}/g) || [];
+  for (const match of labeledMatches) {
+    const cleaned = match.replace(/^VIN[:\s-]*/i, '').replace(/[^A-Z0-9]/g, '');
+    for (let index = 0; index <= cleaned.length - 17; index += 1) {
+      rawCandidates.push(cleaned.slice(index, index + 17));
     }
   }
 
-  const candidates = text.match(/[A-Z0-9OQI]{17,20}/g) || [];
-  for (const candidate of candidates) {
-    const vin = normalizeVinCandidate(candidate);
-    if (vin) {
-      return vin;
+  const broadMatches = text.match(/[A-Z0-9]{17,22}/g) || [];
+  for (const match of broadMatches) {
+    const cleaned = match.replace(/[^A-Z0-9]/g, '');
+    for (let index = 0; index <= cleaned.length - 17; index += 1) {
+      rawCandidates.push(cleaned.slice(index, index + 17));
     }
   }
 
-  return null;
+  let best = null;
+  for (const candidate of rawCandidates) {
+    for (const variant of generateVinVariants(candidate)) {
+      const score = scoreVinCandidate(variant.vin, variant.replacements);
+      if (!best || score > best.score) {
+        best = { vin: variant.vin, score };
+      }
+    }
+  }
+
+  return best?.vin || null;
 }
 
 function setScannerStatus(message, isError = false) {
@@ -224,23 +370,6 @@ function cancelScannerLoop() {
   }
 }
 
-function setScannerPresentation(mode) {
-  scannerMode = mode;
-  if (scannerViewport) {
-    scannerViewport.classList.toggle('hidden', mode === 'html5');
-  }
-  if (scannerFallbackHost) {
-    scannerFallbackHost.classList.toggle('hidden', mode !== 'html5');
-  }
-}
-
-function getActiveScannerVideoElement() {
-  if (scannerMode === 'html5') {
-    return scannerFallbackHost?.querySelector('video') || null;
-  }
-  return scannerVideo || null;
-}
-
 function createCanvas(width, height) {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(width));
@@ -249,14 +378,13 @@ function createCanvas(width, height) {
 }
 
 function captureScannerFrameCanvas() {
-  const video = getActiveScannerVideoElement();
-  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+  if (!scannerVideo || scannerVideo.readyState < 2 || !scannerVideo.videoWidth || !scannerVideo.videoHeight) {
     return null;
   }
 
-  const canvas = createCanvas(video.videoWidth, video.videoHeight);
+  const canvas = createCanvas(scannerVideo.videoWidth, scannerVideo.videoHeight);
   const context = canvas.getContext('2d', { willReadFrequently: true });
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  context.drawImage(scannerVideo, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -264,44 +392,34 @@ function getOcrRegions(frameCanvas) {
   const width = frameCanvas.width;
   const height = frameCanvas.height;
 
-  if (scannerMode === 'native') {
-    return [
-      {
-        left: width * 0.12,
-        top: height * 0.30,
-        width: width * 0.76,
-        height: height * 0.18,
-      },
-      {
-        left: width * 0.10,
-        top: height * 0.26,
-        width: width * 0.80,
-        height: height * 0.28,
-      },
-    ];
-  }
-
   return [
     {
-      left: width * 0.10,
-      top: height * 0.34,
-      width: width * 0.80,
-      height: height * 0.18,
+      left: width * 0.1,
+      top: height * 0.42,
+      width: width * 0.8,
+      height: height * 0.16,
     },
     {
       left: width * 0.08,
-      top: height * 0.28,
+      top: height * 0.38,
       width: width * 0.84,
-      height: height * 0.30,
+      height: height * 0.22,
+    },
+    {
+      left: width * 0.12,
+      top: height * 0.46,
+      width: width * 0.76,
+      height: height * 0.12,
     },
   ];
 }
 
-function buildOcrCanvas(frameCanvas, region) {
-  const scale = 2;
+function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
+  const scale = 3;
   const canvas = createCanvas(region.width * scale, region.height * scale);
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context.imageSmoothingEnabled = false;
+  context.filter = 'grayscale(1) contrast(1.45) brightness(1.08)';
   context.drawImage(
     frameCanvas,
     region.left,
@@ -313,18 +431,48 @@ function buildOcrCanvas(frameCanvas, region) {
     canvas.width,
     canvas.height
   );
+  context.filter = 'none';
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
+  let min = 255;
+  let max = 0;
+  let total = 0;
+  let samples = 0;
+
   for (let index = 0; index < data.length; index += 4) {
     const luminance = (data[index] * 0.299) + (data[index + 1] * 0.587) + (data[index + 2] * 0.114);
-    const normalized = luminance > 150 ? 255 : 0;
-    data[index] = normalized;
-    data[index + 1] = normalized;
-    data[index + 2] = normalized;
+    min = Math.min(min, luminance);
+    max = Math.max(max, luminance);
+    total += luminance;
+    samples += 1;
+    data[index] = luminance;
+    data[index + 1] = luminance;
+    data[index + 2] = luminance;
   }
-  context.putImageData(imageData, 0, 0);
 
+  const range = Math.max(1, max - min);
+  const average = total / Math.max(1, samples);
+  const threshold = Math.max(96, Math.min(204, average - 8));
+
+  for (let index = 0; index < data.length; index += 4) {
+    const normalized = ((data[index] - min) / range) * 255;
+    let output = normalized;
+
+    if (mode === 'threshold') {
+      output = normalized > threshold ? 255 : 0;
+    } else if (mode === 'invert-threshold') {
+      output = normalized > threshold ? 0 : 255;
+    } else if (mode === 'contrast') {
+      output = normalized > 220 ? 255 : Math.max(0, Math.min(255, normalized * 1.1));
+    }
+
+    data[index] = output;
+    data[index + 1] = output;
+    data[index + 2] = output;
+  }
+
+  context.putImageData(imageData, 0, 0);
   return canvas;
 }
 
@@ -336,34 +484,6 @@ function stopScannerStream() {
     track.stop();
   }
   scannerStream = null;
-}
-
-async function stopHtml5Scanner() {
-  if (!html5Scanner) {
-    if (scannerFallbackHost) {
-      scannerFallbackHost.innerHTML = '';
-    }
-    return;
-  }
-
-  try {
-    if (html5Scanner.isScanning) {
-      await html5Scanner.stop();
-    }
-  } catch (_error) {
-    // Ignore teardown errors and keep cleaning up.
-  }
-
-  try {
-    html5Scanner.clear();
-  } catch (_error) {
-    // Ignore clear errors if the scanner surface is already gone.
-  }
-
-  html5Scanner = null;
-  if (scannerFallbackHost) {
-    scannerFallbackHost.innerHTML = '';
-  }
 }
 
 async function ensureVinOcrWorker() {
@@ -386,6 +506,7 @@ async function ensureVinOcrWorker() {
 
     await worker.setParameters({
       tessedit_char_whitelist: VIN_OCR_WHITELIST,
+      tessedit_pageseg_mode: '7',
       preserve_interword_spaces: '0',
       user_defined_dpi: '300',
     });
@@ -418,128 +539,42 @@ async function terminateVinOcrWorker() {
 async function closeScannerModal() {
   scannerActive = false;
   scannerBusy = false;
+  scannerLastAttemptAt = 0;
+  scannerMissCount = 0;
   cancelScannerLoop();
   stopScannerStream();
-  await stopHtml5Scanner();
-  if (scannerOcrButton) {
-    scannerOcrButton.disabled = false;
-  }
   if (scannerVideo) {
     scannerVideo.pause();
     scannerVideo.srcObject = null;
   }
-  setScannerPresentation('native');
   if (scannerModal) {
     scannerModal.classList.add('hidden');
     scannerModal.setAttribute('aria-hidden', 'true');
   }
 }
 
-function isAppleMobileBrowser() {
-  const agent = navigator.userAgent || '';
-  return /iPhone|iPad|iPod/i.test(agent);
-}
-
-function getHtml5VinFormats() {
-  const formats = window.Html5QrcodeSupportedFormats;
-  if (!formats) {
-    return undefined;
-  }
-
-  return [
-    formats.CODE_39,
-    formats.CODE_128,
-    formats.PDF_417,
-  ].filter((value) => value != null);
-}
-
-async function ensureScannerDetector() {
-  if (scannerDetector) {
-    return scannerDetector;
-  }
-
-  if (!('BarcodeDetector' in window)) {
-    throw new Error('This browser does not support camera barcode scanning yet.');
-  }
-
-  let formats = VIN_BARCODE_FORMATS;
-  if (typeof window.BarcodeDetector.getSupportedFormats === 'function') {
-    const supported = await window.BarcodeDetector.getSupportedFormats();
-    const filtered = VIN_BARCODE_FORMATS.filter((format) => supported.includes(format));
-    if (!filtered.length) {
-      throw new Error('This phone browser does not expose the VIN barcode formats we need.');
-    }
-    formats = filtered;
-  }
-
-  scannerDetector = new window.BarcodeDetector({ formats });
-  return scannerDetector;
-}
-
-async function startHtml5FallbackScanner() {
-  if (!window.Html5Qrcode) {
-    throw new Error('The iPhone-compatible VIN scanner did not load correctly.');
-  }
-  if (!scannerFallbackHost) {
-    throw new Error('Scanner surface is missing.');
-  }
-
-  setScannerPresentation('html5');
-  scannerFallbackHost.innerHTML = '<div id="scanner-reader"></div>';
-
-  const formatsToSupport = getHtml5VinFormats();
-  html5Scanner = new window.Html5Qrcode('scanner-reader', {
-    verbose: false,
-    formatsToSupport,
-    useBarCodeDetectorIfSupported: false,
-  });
-
-  const scanBox = (viewfinderWidth, viewfinderHeight) => ({
-    width: Math.max(240, Math.floor(viewfinderWidth * 0.84)),
-    height: Math.max(96, Math.floor(viewfinderHeight * 0.28)),
-  });
-
-  await html5Scanner.start(
-    { facingMode: 'environment' },
-    {
-      fps: 10,
-      qrbox: scanBox,
-      aspectRatio: 1.333334,
-      disableFlip: false,
-    },
-    async (decodedText) => {
-      const vin = normalizeVinCandidate(decodedText);
-      if (vin) {
-        await processDetectedVin(vin);
-      }
-    },
-    () => {
-      // Ignore frame-level decode misses while scanning live.
-    }
-  );
-
-  scannerActive = true;
-}
-
 async function readVinTextFromCamera() {
   const frameCanvas = captureScannerFrameCanvas();
   if (!frameCanvas) {
-    throw new Error('Camera frame is not ready yet. Hold steady for a second and try again.');
+    throw new Error('Camera frame is not ready yet. Hold steady for a second.');
   }
 
   const worker = await ensureVinOcrWorker();
   const regions = getOcrRegions(frameCanvas);
+  const modes = ['threshold', 'contrast', 'invert-threshold'];
 
   for (const region of regions) {
-    const preparedCanvas = buildOcrCanvas(frameCanvas, region);
-    const { data } = await worker.recognize(preparedCanvas);
-    const vin = extractVinFromOcrText(data?.text || '');
-    if (vin) {
-      return vin;
+    for (const mode of modes) {
+      const preparedCanvas = buildOcrCanvas(frameCanvas, region, mode);
+      const { data } = await worker.recognize(preparedCanvas);
+      const vin = extractVinFromOcrText(data?.text || '');
+      if (vin) {
+        return vin;
+      }
     }
   }
 
-  throw new Error('Could not read a clean VIN from the printed label. Move closer, fill more of the frame with the white sticker, and try again.');
+  throw new Error('Could not read a clean VIN from the printed label yet. Move closer and center only the printed VIN line inside the frame.');
 }
 
 async function processDetectedVin(vin) {
@@ -557,60 +592,38 @@ async function processDetectedVin(vin) {
   }
 }
 
-async function runScannerOcr() {
-  if (scannerBusy) {
+async function scanVinTextLoop() {
+  if (!scannerActive) {
     return;
   }
 
-  scannerBusy = true;
-  if (scannerOcrButton) {
-    scannerOcrButton.disabled = true;
+  scannerLoopHandle = requestAnimationFrame(scanVinTextLoop);
+
+  if (scannerBusy || !scannerVideo || scannerVideo.readyState < 2) {
+    return;
   }
-  setScannerStatus('Reading the printed VIN text...');
+
+  const now = performance.now();
+  if (now - scannerLastAttemptAt < VIN_OCR_INTERVAL_MS) {
+    return;
+  }
+
+  scannerLastAttemptAt = now;
+  scannerBusy = true;
 
   try {
     const vin = await readVinTextFromCamera();
-    setScannerStatus(`VIN text found: ${vin}`);
+    setScannerStatus(`VIN found: ${vin}`);
     await processDetectedVin(vin);
   } catch (error) {
-    setScannerStatus(error.message || 'VIN text read failed. Try again.', true);
+    scannerMissCount += 1;
+    if (scannerMissCount === 1) {
+      setScannerStatus('Reading the printed VIN text automatically...');
+    } else if (scannerMissCount % 3 === 0) {
+      setScannerStatus(error.message || 'Still reading... move closer and keep the VIN line level inside the frame.');
+    }
   } finally {
     scannerBusy = false;
-    if (scannerOcrButton) {
-      scannerOcrButton.disabled = false;
-    }
-  }
-}
-
-async function scanFrame() {
-  if (!scannerActive || !scannerVideo) {
-    return;
-  }
-
-  if (scannerBusy || scannerVideo.readyState < 2) {
-    scannerLoopHandle = requestAnimationFrame(scanFrame);
-    return;
-  }
-
-  scannerBusy = true;
-  try {
-    const detector = await ensureScannerDetector();
-    const barcodes = await detector.detect(scannerVideo);
-    for (const barcode of barcodes) {
-      const vin = normalizeVinCandidate(barcode?.rawValue || barcode?.displayValue || '');
-      if (vin) {
-        await processDetectedVin(vin);
-        return;
-      }
-    }
-  } catch (error) {
-    setScannerStatus(error.message || 'VIN scan failed. Try typing the VIN instead.', true);
-  } finally {
-    scannerBusy = false;
-  }
-
-  if (scannerActive) {
-    scannerLoopHandle = requestAnimationFrame(scanFrame);
   }
 }
 
@@ -620,59 +633,11 @@ async function openScannerModal() {
     scannerModal.classList.remove('hidden');
     scannerModal.setAttribute('aria-hidden', 'false');
   }
-  setScannerPresentation('native');
-  setScannerStatus('Point the camera at the VIN barcode and hold steady.');
-
-  const shouldPreferHtml5Fallback = isAppleMobileBrowser() || !('BarcodeDetector' in window);
-
-  if (shouldPreferHtml5Fallback) {
-    try {
-      setScannerStatus('Starting iPhone-compatible scanner...');
-      await startHtml5FallbackScanner();
-      setScannerStatus('Point the camera at the VIN barcode and hold steady.');
-      return;
-    } catch (error) {
-      await closeScannerModal();
-      showStatus(vinStatus, error.message || 'Could not start the VIN scanner on this phone.', true);
-      return;
-    }
-  }
+  setScannerStatus('Starting camera...');
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    if (window.Html5Qrcode) {
-      try {
-        setScannerStatus('Starting fallback VIN scanner...');
-        await startHtml5FallbackScanner();
-        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
-        return;
-      } catch (error) {
-        await closeScannerModal();
-        showStatus(vinStatus, error.message || 'This device does not allow live camera access here.', true);
-        return;
-      }
-    }
     await closeScannerModal();
     showStatus(vinStatus, 'This device does not allow live camera access here. Type the VIN manually.', true);
-    return;
-  }
-
-  try {
-    await ensureScannerDetector();
-  } catch (error) {
-    if (window.Html5Qrcode) {
-      try {
-        setScannerStatus('Starting fallback VIN scanner...');
-        await startHtml5FallbackScanner();
-        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
-        return;
-      } catch (fallbackError) {
-        await closeScannerModal();
-        showStatus(vinStatus, fallbackError.message || error.message || 'VIN barcode scanning is not available on this browser.', true);
-        return;
-      }
-    }
-    await closeScannerModal();
-    showStatus(vinStatus, error.message || 'VIN barcode scanning is not available on this browser.', true);
     return;
   }
 
@@ -681,8 +646,8 @@ async function openScannerModal() {
       audio: false,
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
       },
     });
 
@@ -693,23 +658,13 @@ async function openScannerModal() {
     scannerVideo.srcObject = scannerStream;
     await scannerVideo.play();
     scannerActive = true;
-    scannerMode = 'native';
+    scannerBusy = false;
+    scannerMissCount = 0;
+    scannerLastAttemptAt = 0;
     cancelScannerLoop();
-    scannerLoopHandle = requestAnimationFrame(scanFrame);
+    setScannerStatus('Center the printed VIN line inside the frame. We will read it automatically.');
+    scannerLoopHandle = requestAnimationFrame(scanVinTextLoop);
   } catch (error) {
-    if (window.Html5Qrcode) {
-      try {
-        stopScannerStream();
-        setScannerStatus('Native camera access failed. Trying fallback scanner...');
-        await startHtml5FallbackScanner();
-        setScannerStatus('Point the camera at the VIN barcode and hold steady.');
-        return;
-      } catch (fallbackError) {
-        await closeScannerModal();
-        showStatus(vinStatus, fallbackError.message || error.message || 'Could not open the camera. Type the VIN manually.', true);
-        return;
-      }
-    }
     await closeScannerModal();
     showStatus(vinStatus, error.message || 'Could not open the camera. Type the VIN manually.', true);
   }
@@ -742,12 +697,13 @@ vinForm.addEventListener('submit', async (event) => {
   hideStatus(vinStatus);
   vinResults.classList.add('hidden');
 
-  const vin = vinInput.value.trim().toUpperCase();
+  const vin = normalizeManualVin(vinInput.value);
   if (!vin) {
-    showStatus(vinStatus, 'Enter a VIN first.', true);
+    showStatus(vinStatus, 'Enter a valid 17-character VIN first.', true);
     return;
   }
 
+  vinInput.value = vin;
   showStatus(vinStatus, 'Pulling sticker and matching the RAM charts...');
 
   try {
@@ -768,12 +724,6 @@ if (vinScanButton) {
 if (scannerCloseButton) {
   scannerCloseButton.addEventListener('click', () => {
     void closeScannerModal();
-  });
-}
-
-if (scannerOcrButton) {
-  scannerOcrButton.addEventListener('click', () => {
-    void runScannerOcr();
   });
 }
 
