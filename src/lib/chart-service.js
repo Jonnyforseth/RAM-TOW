@@ -1,17 +1,23 @@
 const fs = require('fs');
 const { createPdfParser } = require('./pdf-runtime');
-const { PDF_PATHS, HITCH_LIMITS, getTowRows, getPayloadRows } = require('../data/chart-data');
+const {
+  DEFAULT_CHART_YEAR,
+  GOOSENECK_REQUIRED_OVER,
+  HITCH_LIMITS,
+  getPdfPaths,
+  getTowRows,
+  getPayloadRows,
+  resolveChartYear,
+} = require('../data/chart-data');
 
-const towRows = getTowRows();
-const payloadRows = getPayloadRows();
+const towRows = getTowRows(DEFAULT_CHART_YEAR);
+const payloadRows = getPayloadRows(DEFAULT_CHART_YEAR);
 
 const chartCache = {
-  ready: false,
-  texts: {
-    ram1500: '',
-    ramHD: '',
-  },
+  textsByYear: {},
 };
+
+const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'drive', 'cab', 'bed', 'rearWheels']);
 
 function normalize(value) {
   return String(value || '')
@@ -115,7 +121,7 @@ function normalizeEngine(value) {
   if (text.includes('5 7l') && text.includes('hemi')) {
     return '5.7L HEMI V8 eTorque';
   }
-  if (text.includes('hurricane ho') || (text.includes('hurricane') && text.includes('ho'))) {
+  if (text.includes('hurricane h o') || text.includes('hurricane ho') || (text.includes('hurricane') && text.includes('ho'))) {
     return '3.0L Hurricane HO';
   }
   if (text.includes('hurricane') || text.includes('twin turbo')) {
@@ -124,7 +130,7 @@ function normalizeEngine(value) {
   if (text.includes('6 4l') && text.includes('hemi')) {
     return '6.4L HEMI V8';
   }
-  if (text.includes('cummins')) {
+  if (text.includes('cummins') || (text.includes('6 7l') && text.includes('high output'))) {
     return '6.7L Cummins HO';
   }
   return null;
@@ -133,6 +139,7 @@ function normalizeEngine(value) {
 function cleanSpec(input = {}) {
   return {
     vin: String(input.vin || '').toUpperCase(),
+    year: input.year ? Number(input.year) : null,
     model: input.model ? String(input.model) : null,
     drive: normalizeDrive(input.drive),
     cab: normalizeCab(input.cab),
@@ -143,6 +150,17 @@ function cleanSpec(input = {}) {
     axleRatio: input.axleRatio ? String(input.axleRatio).trim() : null,
     gvwr: toNumber(input.gvwr),
   };
+}
+
+function normalizeHitchType(value) {
+  const text = normalize(value);
+  if (!text) {
+    return 'conventional';
+  }
+  if (text.includes('gooseneck') || text.includes('5th') || text.includes('fifth') || text.includes('pin')) {
+    return 'gooseneck';
+  }
+  return 'conventional';
 }
 
 function trimMatches(expected, actual) {
@@ -247,16 +265,24 @@ function decorateMatch(row, scoreInfo, type) {
   };
 }
 
-function findMatches(spec) {
-  const towMatches = towRows
+function hasDisallowedMismatch(scoreInfo) {
+  return scoreInfo.mismatches.some((key) => CRITICAL_MISMATCH_KEYS.has(key));
+}
+
+function findMatches(spec, options = {}) {
+  const chartYear = resolveChartYear(options.year || spec?.year);
+  const towRowsForYear = getTowRows(chartYear);
+  const payloadRowsForYear = getPayloadRows(chartYear);
+
+  const towMatches = towRowsForYear
     .map((row) => ({ row, scoreInfo: scoreRow(row, spec, false) }))
-    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2)
+    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
     .sort(compareRankedMatches)
     .map(({ row, scoreInfo }) => decorateMatch(row, scoreInfo, 'tow'));
 
-  const payloadMatches = payloadRows
+  const payloadMatches = payloadRowsForYear
     .map((row) => ({ row, scoreInfo: scoreRow(row, spec, true) }))
-    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2)
+    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
     .sort(compareRankedMatches)
     .map(({ row, scoreInfo }) => decorateMatch(row, scoreInfo, 'payload'));
 
@@ -300,24 +326,31 @@ function getOverrideOptions(spec, matches) {
   return options;
 }
 
-async function ensureChartTexts() {
-  if (chartCache.ready) {
-    return chartCache.texts;
+async function ensureChartTexts(year = DEFAULT_CHART_YEAR) {
+  const chartYear = resolveChartYear(year);
+  if (chartCache.textsByYear[chartYear]) {
+    return chartCache.textsByYear[chartYear];
   }
 
-  for (const [key, path] of Object.entries(PDF_PATHS)) {
+  const texts = {
+    ram1500: '',
+    ramHD: '',
+  };
+  const pdfPaths = getPdfPaths(chartYear);
+
+  for (const [key, path] of Object.entries(pdfPaths)) {
     if (!path || !fs.existsSync(path)) {
-      chartCache.texts[key] = '';
+      texts[key] = '';
       continue;
     }
     const parser = await createPdfParser(fs.readFileSync(path));
     const result = await parser.getText();
-    chartCache.texts[key] = result.text;
+    texts[key] = result.text;
     await parser.destroy();
   }
 
-  chartCache.ready = true;
-  return chartCache.texts;
+  chartCache.textsByYear[chartYear] = texts;
+  return texts;
 }
 
 function getEngineNeedle(spec) {
@@ -341,8 +374,9 @@ function makeSnippet(text, needle) {
   return haystack.slice(start, end).replace(/\s+/g, ' ').trim();
 }
 
-async function findRawChartHints(spec) {
-  const texts = await ensureChartTexts();
+async function findRawChartHints(spec, options = {}) {
+  const chartYear = resolveChartYear(options.year || spec?.year);
+  const texts = await ensureChartTexts(chartYear);
   const chartText = spec.model === '1500' ? texts.ram1500 : texts.ramHD;
   const hints = [];
   const needles = [getEngineNeedle(spec), spec.axleRatio, spec.gvwr, spec.trim].filter(Boolean);
@@ -357,8 +391,8 @@ async function findRawChartHints(spec) {
   return hints.slice(0, 3);
 }
 
-function pairPayloadRows(towRow, tongueWeight) {
-  return payloadRows.filter((payloadRow) => {
+function pairPayloadRows(towRow, tongueWeight, payloadRowsForYear = payloadRows) {
+  return payloadRowsForYear.filter((payloadRow) => {
     if (payloadRow.model !== towRow.model) {
       return false;
     }
@@ -390,22 +424,34 @@ function pairPayloadRows(towRow, tongueWeight) {
   });
 }
 
-function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference }) {
+function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference, hitchType }) {
   const modelFilter = String(modelPreference || '').trim();
+  const hitchMode = normalizeHitchType(hitchType);
+  const towRowsForYear = towRows;
+  const payloadRowsForYear = payloadRows;
   const results = [];
 
-  for (const towRow of towRows) {
+  for (const towRow of towRowsForYear) {
     if (modelFilter && towRow.model !== modelFilter) {
+      continue;
+    }
+    if (hitchMode === 'gooseneck' && towRow.model === '1500') {
       continue;
     }
     if (towRow.maxTow < trailerWeight) {
       continue;
     }
-    const hitchLimit = HITCH_LIMITS[towRow.model];
-    if (hitchLimit && tongueWeight > hitchLimit) {
-      continue;
+    if (hitchMode === 'conventional') {
+      const hitchLimit = HITCH_LIMITS[towRow.model];
+      if (hitchLimit && tongueWeight > hitchLimit) {
+        continue;
+      }
+      const gooseneckRequiredOver = GOOSENECK_REQUIRED_OVER[towRow.model];
+      if (gooseneckRequiredOver && trailerWeight > gooseneckRequiredOver) {
+        continue;
+      }
     }
-    const payloadCandidates = pairPayloadRows(towRow, tongueWeight);
+    const payloadCandidates = pairPayloadRows(towRow, tongueWeight, payloadRowsForYear);
     for (const payloadRow of payloadCandidates) {
       results.push({
         model: towRow.model,
@@ -423,6 +469,7 @@ function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference
         towSurplus: towRow.maxTow - trailerWeight,
         payloadSurplus: payloadRow.maxPayload - tongueWeight,
         confidence: towRow.confidence || payloadRow.confidence || 'high',
+        hitchType: hitchMode,
       });
     }
   }
@@ -443,17 +490,162 @@ function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference
     });
 }
 
-function reverseLookup({ trailerWeight, tongueWeight, modelPreference }) {
-  return collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference }).slice(0, 12);
+function reverseLookup({ trailerWeight, tongueWeight, modelPreference, hitchType }) {
+  return collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference, hitchType }).slice(0, 12);
+}
+
+function getReverseProfileKey(row) {
+  return [
+    row.model || '',
+    row.engine || '',
+    row.drive || '',
+    row.rearWheels || '',
+  ].join('|');
+}
+
+function getRecommendationTitle(row, context = {}) {
+  const modelName = `RAM ${row.model}`;
+
+  if (context.kind === 'minimum') {
+    return context.modelFilter ? `Minimum ${modelName} setup` : 'Minimum setup';
+  }
+
+  if (context.kind === 'alternate') {
+    return `${modelName} alternate`;
+  }
+
+  if (context.kind === 'stepup') {
+    return `${modelName} step-up`;
+  }
+
+  return modelName;
+}
+
+function buildReverseRecommendations({ trailerWeight, tongueWeight, modelPreference, hitchType }) {
+  const rows = collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference, hitchType });
+  const modelFilter = String(modelPreference || '').trim();
+  const uniqueRows = [];
+  const seenProfiles = new Set();
+
+  for (const row of rows) {
+    const profileKey = getReverseProfileKey(row);
+    if (seenProfiles.has(profileKey)) {
+      continue;
+    }
+    seenProfiles.add(profileKey);
+    uniqueRows.push(row);
+  }
+
+  if (!uniqueRows.length) {
+    return [];
+  }
+
+  const selected = [];
+  const selectedKeys = new Set();
+  const primaryModel = uniqueRows[0].model;
+  const maxPrimaryCount = modelFilter ? 4 : 3;
+
+  function addRow(row, kind) {
+    if (!row) {
+      return false;
+    }
+    const key = getReverseProfileKey(row);
+    if (selectedKeys.has(key)) {
+      return false;
+    }
+    selected.push({
+      ...row,
+      recommendationTitle: getRecommendationTitle(row, { kind, modelFilter }),
+    });
+    selectedKeys.add(key);
+    return true;
+  }
+
+  addRow(uniqueRows[0], 'minimum');
+
+  for (const row of uniqueRows) {
+    if (selected.length >= maxPrimaryCount) {
+      break;
+    }
+    if (row.model !== primaryModel) {
+      continue;
+    }
+    addRow(row, 'alternate');
+  }
+
+  if (!modelFilter) {
+    const seenModels = new Set([primaryModel]);
+    for (const row of uniqueRows) {
+      if (selected.length >= 4) {
+        break;
+      }
+      if (seenModels.has(row.model)) {
+        continue;
+      }
+      if (addRow(row, 'stepup')) {
+        seenModels.add(row.model);
+      }
+    }
+  }
+
+  return selected;
+}
+
+function buildReverseInsights({ trailerWeight, tongueWeight, modelPreference, hitchType }, recommendations = []) {
+  const modelFilter = String(modelPreference || '').trim();
+  const hitchMode = normalizeHitchType(hitchType);
+  const insights = [];
+  const has1500Recommendation = recommendations.some((row) => row.model === '1500');
+
+  if (hitchMode === 'conventional' && has1500Recommendation && tongueWeight > HITCH_LIMITS['1500']) {
+    insights.push({
+      type: 'warning',
+      title: 'RAM 1500 receiver-hitch limit',
+      message: `RAM 1500 is excluded here because ${formatNumber(tongueWeight)} lb of tongue weight exceeds the 1,100 lb conventional Class IV hitch limit in the 2026 RAM 1500 tow chart footnotes.`,
+    });
+  }
+
+  if (hitchMode === 'conventional' && trailerWeight > GOOSENECK_REQUIRED_OVER['2500']) {
+    insights.push({
+      type: 'warning',
+      title: 'Heavy-trailer hitch requirement',
+      message: 'For trailers over 20,000 lb on a RAM 2500 and over 23,000 lb on a RAM 3500, the 2026 RAM HD chart requires a 5th-wheel or gooseneck hitch instead of a conventional receiver hitch.',
+    });
+  }
+
+  if (hitchMode === 'gooseneck' && has1500Recommendation) {
+    insights.push({
+      type: 'note',
+      title: '1500 hitch type note',
+      message: 'RAM 1500 recommendations are not shown in 5th-wheel / gooseneck mode because the 2026 RAM 1500 tow chart workflow here is built around conventional receiver-hitch ratings.',
+    });
+  }
+
+  if (hitchMode === 'conventional' && has1500Recommendation && trailerWeight >= 5000) {
+    insights.push({
+      type: 'note',
+      title: 'Weight-distributing hitch note',
+      message: 'The 2026 RAM 1500 tow chart recommends a weight-distributing system for trailers over 5,000 lb.',
+    });
+  }
+
+  return insights;
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('en-US').format(value);
 }
 
 module.exports = {
+  buildReverseInsights,
+  buildReverseRecommendations,
   cleanSpec,
   collectReverseLookupRows,
   ensureChartTexts,
   findMatches,
   findRawChartHints,
   getOverrideOptions,
+  normalizeHitchType,
   normalizeBed,
   normalizeCab,
   normalizeDrive,

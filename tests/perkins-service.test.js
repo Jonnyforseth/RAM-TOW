@@ -5,6 +5,7 @@ const {
   applyVerifiedCapacities,
   buildCandidateProfile,
   findBestInventoryMatch,
+  getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
 } = require('../src/lib/perkins-service');
@@ -161,4 +162,39 @@ test('VIN-verified capacities can disqualify a reverse lookup truck that chart m
   assert.equal(merged.maxPayload, 1630);
   assert.equal(merged.drive, '4x4');
   assert.equal(meetsTrailerRequirements(merged, { trailerWeight: 10150, tongueWeight: 1041 }), false);
+});
+
+test('getMatchingPerkinsEngineFilters includes both HEMI aliases for the 5.7L eTorque engine', () => {
+  const matches = getMatchingPerkinsEngineFilters(
+    [
+      '3.0L I6',
+      '3.0L I6 Hurricane SO Twin Turbo ESS',
+      '5.7L V8 HEMI MDS VVT eTorque Engine',
+      'HEMI 5.7L V8 Multi Displacement VVT eTorque',
+    ],
+    '5.7L HEMI V8 eTorque'
+  );
+
+  assert.deepEqual(matches, [
+    '5.7L V8 HEMI MDS VVT eTorque Engine',
+    'HEMI 5.7L V8 Multi Displacement VVT eTorque',
+  ]);
+});
+
+test('getMatchingPerkinsEngineFilters includes generic and Cummins-labelled 6.7L I6 diesel options', () => {
+  const matches = getMatchingPerkinsEngineFilters(
+    [
+      '6.4L V8',
+      '6.7L I6',
+      '6.7L I6 Cummins HO Turbo Diesel Eng',
+      'Cummins 6.7L I6 Turbodiesel',
+    ],
+    '6.7L Cummins HO'
+  );
+
+  assert.deepEqual(matches, [
+    '6.7L I6',
+    '6.7L I6 Cummins HO Turbo Diesel Eng',
+    'Cummins 6.7L I6 Turbodiesel',
+  ]);
 });

@@ -6,7 +6,7 @@
     <title>RAM Towing Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -60,7 +60,7 @@
 
         <section class="card">
           <div class="card-head">
-            <h2>What trailer are you pulling?</h2>
+            <h2>What RAM Fits My Trailer?</h2>
           </div>
 
           <form id="reverse-form" class="stack">
@@ -70,12 +70,19 @@
                 <input id="trailer-weight" type="number" min="0" step="1" placeholder="9500">
               </label>
               <label class="field">
-                <span>Tongue Weight</span>
+                <span id="tongue-weight-label">Tongue Weight</span>
                 <input id="tongue-weight" type="number" min="0" step="1" placeholder="950">
               </label>
             </div>
             <label class="field">
-              <span>Truck Size Filter</span>
+              <span>Hitch Type</span>
+              <select id="hitch-type">
+                <option value="conventional">Conventional / bumper-pull</option>
+                <option value="gooseneck">5th-wheel / gooseneck</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Start With</span>
               <select id="model-preference">
                 <option value="">Any RAM truck</option>
                 <option value="1500">1500 only</option>
@@ -83,8 +90,8 @@
                 <option value="3500">3500 only</option>
               </select>
             </label>
-            <button type="submit" class="button button-primary">Find Matching Trucks</button>
-            <p class="microcopy">Results are paired to Perkins Motors inventory, sorted from lowest current price to highest current price, with repeat trims limited so the list stays clean.</p>
+            <button type="submit" class="button button-primary">Show Best Fits</button>
+            <p class="microcopy microcopy-strong">Before you buy, run the truck VIN through the decoder on the left to confirm the axle ratio and exact configuration still fit your trailer.</p>
           </form>
 
           <div id="reverse-status" class="status hidden"></div>

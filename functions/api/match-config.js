@@ -6,11 +6,12 @@ const { cleanSpec, findMatches, findRawChartHints, getOverrideOptions } = chartS
 export async function onRequestPost(context) {
   try {
     const spec = cleanSpec(await context.request.json());
-    const matches = findMatches(spec);
+    const chartYear = spec.year || 2026;
+    const matches = findMatches(spec, { year: chartYear });
 
     let rawHints = [];
     try {
-      rawHints = await findRawChartHints(spec);
+      rawHints = await findRawChartHints(spec, { year: chartYear });
     } catch (_error) {
       rawHints = [];
     }
@@ -18,6 +19,7 @@ export async function onRequestPost(context) {
     return json({
       ok: true,
       spec,
+      chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
       matches,

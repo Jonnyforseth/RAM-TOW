@@ -12,6 +12,23 @@ const payloadDetail = document.querySelector('#payload-detail');
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
 const reverseResults = document.querySelector('#reverse-results');
+const hitchTypeInput = document.querySelector('#hitch-type');
+const tongueWeightLabel = document.querySelector('#tongue-weight-label');
+const reverseInputs = [
+  document.querySelector('#trailer-weight'),
+  document.querySelector('#tongue-weight'),
+  hitchTypeInput,
+  document.querySelector('#model-preference'),
+];
+
+function renderInsight(item) {
+  return `
+    <article class="insight-card insight-${escapeHtml(item.type || 'note')}">
+      <h4>${escapeHtml(item.title || 'Note')}</h4>
+      <p>${escapeHtml(item.message || '')}</p>
+    </article>
+  `;
+}
 
 function showStatus(target, message, isError = false) {
   target.textContent = message;
@@ -27,6 +44,19 @@ function hideStatus(target) {
   target.classList.add('hidden');
   target.textContent = '';
   target.classList.remove('error');
+}
+
+function resetReverseResults() {
+  hideStatus(reverseStatus);
+  reverseResults.classList.add('hidden');
+  reverseResults.innerHTML = '';
+}
+
+function syncHitchTypeUi() {
+  const hitchType = hitchTypeInput?.value || 'conventional';
+  if (tongueWeightLabel) {
+    tongueWeightLabel.textContent = hitchType === 'gooseneck' ? 'Pin Weight' : 'Tongue Weight';
+  }
 }
 
 function formatNumber(value) {
@@ -91,27 +121,24 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind) {
   detailNode.innerHTML = lines.join('<br>');
 }
 
-function renderInventoryMatch(row) {
-  if (!row.inventoryMatch) {
+function renderInventoryLink(row) {
+  if (!row.inventoryLink?.url) {
     return `
       <div class="inventory-match">
         <span class="inventory-label">Perkins Inventory</span>
-        <p>No current Perkins truck lined up cleanly with this chart result right now.</p>
+        <p>Open the RAM ${escapeHtml(row.model || '')} inventory page, then run any candidate VIN back through the lookup on the left.</p>
       </div>
     `;
   }
 
-  const title = escapeHtml(row.inventoryMatch.inventoryTitle || 'Open truck');
-  const stockNumber = escapeHtml(row.inventoryMatch.stockNumber || '-');
-  const link = escapeHtml(row.inventoryMatch.inventoryUrl || '#');
-  const label = escapeHtml(row.inventoryMatch.matchLabel || 'Perkins match');
-  const price = row.inventoryMatch.currentPrice ? formatNumber(row.inventoryMatch.currentPrice) : null;
+  const link = escapeHtml(row.inventoryLink.url);
+  const applied = (row.inventoryLink.applied || []).map(escapeHtml).join(' &bull; ');
 
   return `
     <div class="inventory-match">
-      <span class="inventory-label">${label}</span>
-      <p><span class="inventory-stock">Stock ${stockNumber}</span>${price ? ` &bull; <span class="inventory-price">$${price}</span>` : ''}</p>
-      <a href="${link}" target="_blank" rel="noreferrer">${title}</a>
+      <span class="inventory-label">Perkins Inventory</span>
+      <p>${applied || 'Filtered to the closest available engine and drivetrain family on Perkins Motors.'}</p>
+      <a href="${link}" target="_blank" rel="noreferrer">View filtered RAM ${escapeHtml(row.model || '')} inventory</a>
     </div>
   `;
 }
@@ -170,16 +197,15 @@ vinForm.addEventListener('submit', async (event) => {
 
 reverseForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  hideStatus(reverseStatus);
-  reverseResults.classList.add('hidden');
-  reverseResults.innerHTML = '';
+  resetReverseResults();
 
-  showStatus(reverseStatus, 'Finding the lowest-priced Perkins trucks that clear your trailer...');
+  showStatus(reverseStatus, 'Building the minimum RAM setups that clear your trailer...');
 
   try {
     const payload = {
       trailerWeight: Number(document.querySelector('#trailer-weight').value),
       tongueWeight: Number(document.querySelector('#tongue-weight').value),
+      hitchType: hitchTypeInput?.value || 'conventional',
       modelPreference: document.querySelector('#model-preference').value,
     };
 
@@ -192,33 +218,57 @@ reverseForm.addEventListener('submit', async (event) => {
     hideStatus(reverseStatus);
     reverseResults.classList.remove('hidden');
 
-    const verifiedResults = (response.results || []).filter(
-      (row) => row.inventoryMatch && row.verificationSource === 'vin'
-    );
+    const insights = response.insights || [];
+    for (const item of insights) {
+      reverseResults.insertAdjacentHTML('beforeend', renderInsight(item));
+    }
 
-    if (!verifiedResults.length) {
+    const recommendations = response.results || [];
+
+    if (!recommendations.length) {
       const card = document.createElement('article');
       card.className = 'alternate-card';
-      card.innerHTML = '<h4>No current Perkins match</h4><p>No current Perkins inventory truck matches those towing numbers with this filter. Try Any RAM truck or adjust the trailer inputs.</p>';
+      card.innerHTML = '<h4>No chart match found</h4><p>No 2026 RAM chart setup clears that trailer and tongue-weight combination with this filter. Try a larger RAM class or adjust the trailer inputs.</p>';
       reverseResults.appendChild(card);
       return;
     }
 
-    for (const row of verifiedResults) {
+    for (const row of recommendations) {
       const card = document.createElement('article');
       card.className = 'alternate-card';
       card.innerHTML = `
-        <h4>${row.inventoryMatch?.inventoryTitle || `${row.model} ${row.trim || ''} ${row.cab} ${row.bed} ${row.drive}`}</h4>
-        <p>${row.engine}${row.rearWheels ? ` &bull; ${row.rearWheels}` : ''}${row.axleRatio ? ` &bull; Axle ${row.axleRatio}` : ''}</p>
+        <h4>${escapeHtml(row.recommendationTitle || `RAM ${row.model}`)}</h4>
+        <p class="recommendation-kicker">RAM ${escapeHtml(row.model || '')} &bull; ${escapeHtml(row.engine || '-')} &bull; ${escapeHtml(row.drive || '-')}</p>
+        <p>Minimum build: ${escapeHtml(row.cab || '-')} ${escapeHtml(row.bed || '')}${row.rearWheels ? ` &bull; ${escapeHtml(row.rearWheels)}` : ''}${row.axleRatio ? ` &bull; Axle ${escapeHtml(row.axleRatio)}` : ''}</p>
         <p>Towing Capacity: ${formatCapacity(row.maxTow)} &bull; Payload Capacity: ${formatCapacity(row.maxPayload)}</p>
-        <p>Truck setup: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
+        <p>Chart setup: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
         <p>Headroom: ${formatCapacity(row.towSurplus)} tow &bull; ${formatCapacity(row.payloadSurplus)} payload</p>
-        ${renderInventoryMatch(row)}
-        ${row.confidence === 'medium' ? '<span class="confidence">HD edge case: verify against chart</span>' : ''}
+        ${renderInventoryLink(row)}
+        <span class="confidence">Verify the VIN in the decoder to confirm axle ratio and exact truck configuration before you buy.</span>
       `;
       reverseResults.appendChild(card);
     }
   } catch (error) {
     showStatus(reverseStatus, error.message, true);
   }
+});
+
+for (const input of reverseInputs) {
+  if (!input) {
+    continue;
+  }
+
+  input.addEventListener('input', resetReverseResults);
+  input.addEventListener('change', resetReverseResults);
+}
+
+if (hitchTypeInput) {
+  hitchTypeInput.addEventListener('change', syncHitchTypeUi);
+}
+
+syncHitchTypeUi();
+
+window.addEventListener('pageshow', () => {
+  resetReverseResults();
+  syncHitchTypeUi();
 });

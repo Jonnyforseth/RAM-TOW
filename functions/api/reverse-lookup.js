@@ -2,8 +2,8 @@ import chartService from '../../src/lib/chart-service.js';
 import perkinsService from '../../src/lib/perkins-service.js';
 import { json, errorResponse } from '../_shared/http.js';
 
-const { collectReverseLookupRows } = chartService;
-const { attachInventoryMatches } = perkinsService;
+const { buildReverseInsights, buildReverseRecommendations } = chartService;
+const { attachInventorySearchLinks } = perkinsService;
 
 export async function onRequestPost(context) {
   try {
@@ -11,6 +11,7 @@ export async function onRequestPost(context) {
     const trailerWeight = Number(body?.trailerWeight);
     const tongueWeight = Number(body?.tongueWeight);
     const modelPreference = String(body?.modelPreference || '').trim();
+    const hitchType = String(body?.hitchType || 'conventional').trim();
 
     if (!Number.isFinite(trailerWeight) || trailerWeight <= 0) {
       throw new Error('Enter a valid trailer weight.');
@@ -20,22 +21,23 @@ export async function onRequestPost(context) {
       throw new Error('Enter a valid tongue weight.');
     }
 
-    const baseResults = collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference });
+    const recommendations = buildReverseRecommendations({ trailerWeight, tongueWeight, modelPreference, hitchType });
+    const insights = buildReverseInsights(
+      { trailerWeight, tongueWeight, modelPreference, hitchType },
+      recommendations
+    );
     let inventoryNotes = [];
-    let results = baseResults;
+    let results = recommendations;
 
     try {
-      const inventoryResponse = await attachInventoryMatches(baseResults, {
-        trailerWeight,
-        tongueWeight,
-      });
+      const inventoryResponse = await attachInventorySearchLinks(recommendations);
       results = inventoryResponse.results;
       inventoryNotes = [
-        `Perkins inventory pairing checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,
+        `Perkins inventory filters checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,
       ];
     } catch (inventoryError) {
       inventoryNotes = [
-        `Perkins inventory pairing is temporarily unavailable: ${inventoryError.message}`,
+        `Perkins inventory links are temporarily unavailable: ${inventoryError.message}`,
       ];
     }
 
@@ -45,11 +47,13 @@ export async function onRequestPost(context) {
         trailerWeight,
         tongueWeight,
         modelPreference: modelPreference || null,
+        hitchType,
       },
+      insights,
       results,
       notes: [
-        'Reverse lookup checks both chart tow capacity and chart payload capacity.',
-        'The calculator assumes conventional trailer tongue weight and uses RAM chart footnote hitch limits.',
+        'Setup recommendations check both RAM chart tow capacity and RAM chart payload capacity.',
+        'Open a Perkins inventory link, then run any candidate VIN back through the lookup on the left to confirm the exact axle and final rating.',
         ...inventoryNotes,
       ],
     });

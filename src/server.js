@@ -1,16 +1,18 @@
 const express = require('express');
 const path = require('path');
+const { SUPPORTED_CHART_YEARS } = require('./data/chart-data');
 const {
+  buildReverseInsights,
+  buildReverseRecommendations,
   cleanSpec,
   ensureChartTexts,
-  collectReverseLookupRows,
   findMatches,
   findRawChartHints,
   getOverrideOptions,
   towRows,
   payloadRows,
 } = require('./lib/chart-service');
-const { attachInventoryMatches } = require('./lib/perkins-service');
+const { attachInventorySearchLinks } = require('./lib/perkins-service');
 const { lookupVin } = require('./lib/sticker-service');
 
 const app = express();
@@ -20,21 +22,23 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/health', async (_req, res) => {
-  await ensureChartTexts();
+  await Promise.all(SUPPORTED_CHART_YEARS.map((year) => ensureChartTexts(year)));
   res.json({
     ok: true,
     port: PORT,
     towRows: towRows.length,
     payloadRows: payloadRows.length,
-    date: '2026-08-20',
+    supportedVinChartYears: SUPPORTED_CHART_YEARS,
+    date: '2026-08-21',
   });
 });
 
 app.get('/api/lookup-vin/:vin', async (req, res) => {
   try {
     const vinResult = await lookupVin(req.params.vin);
-    const matches = findMatches(vinResult.detectedSpec);
-    const rawHints = await findRawChartHints(vinResult.detectedSpec);
+    const chartYear = vinResult.detectedSpec.year;
+    const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
+    const rawHints = await findRawChartHints(vinResult.detectedSpec, { year: chartYear });
 
     res.json({
       ok: true,
@@ -42,13 +46,14 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
       pdfUrl: vinResult.pdfUrl,
       stickerTitle: vinResult.detectedSpec.stickerTitle,
       detectedSpec: vinResult.detectedSpec,
+      chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
       matches,
       overrideOptions: getOverrideOptions(vinResult.detectedSpec, matches),
       rawHints,
       notes: [
-        'Results are based on the 2026 RAM towing and payload PDFs loaded into this local site.',
+        `Results are based on the ${chartYear} RAM towing and payload PDFs loaded into this local site.`,
         'If bed length, GVWR, or rear wheel setup is missing from the sticker, use the override fields to lock in the exact configuration.',
       ],
     });
@@ -63,12 +68,14 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
 app.post('/api/match-config', async (req, res) => {
   try {
     const spec = cleanSpec(req.body || {});
-    const matches = findMatches(spec);
-    const rawHints = await findRawChartHints(spec);
+    const chartYear = spec.year || 2026;
+    const matches = findMatches(spec, { year: chartYear });
+    const rawHints = await findRawChartHints(spec, { year: chartYear });
 
     res.json({
       ok: true,
       spec,
+      chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
       matches,
@@ -88,6 +95,7 @@ app.post('/api/reverse-lookup', async (req, res) => {
     const trailerWeight = Number(req.body?.trailerWeight);
     const tongueWeight = Number(req.body?.tongueWeight);
     const modelPreference = String(req.body?.modelPreference || '').trim();
+    const hitchType = String(req.body?.hitchType || 'conventional').trim();
 
     if (!Number.isFinite(trailerWeight) || trailerWeight <= 0) {
       throw new Error('Enter a valid trailer weight.');
@@ -97,22 +105,23 @@ app.post('/api/reverse-lookup', async (req, res) => {
       throw new Error('Enter a valid tongue weight.');
     }
 
-    const baseResults = collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference });
+    const recommendations = buildReverseRecommendations({ trailerWeight, tongueWeight, modelPreference, hitchType });
+    const insights = buildReverseInsights(
+      { trailerWeight, tongueWeight, modelPreference, hitchType },
+      recommendations
+    );
     let inventoryNotes = [];
-    let results = baseResults;
+    let results = recommendations;
 
     try {
-      const inventoryResponse = await attachInventoryMatches(baseResults, {
-        trailerWeight,
-        tongueWeight,
-      });
+      const inventoryResponse = await attachInventorySearchLinks(recommendations);
       results = inventoryResponse.results;
       inventoryNotes = [
-        `Perkins inventory pairing checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,
+        `Perkins inventory filters checked live on ${new Date(inventoryResponse.checkedAt).toLocaleDateString('en-US')} from perkinsmotors.com.`,
       ];
     } catch (inventoryError) {
       inventoryNotes = [
-        `Perkins inventory pairing is temporarily unavailable: ${inventoryError.message}`,
+        `Perkins inventory links are temporarily unavailable: ${inventoryError.message}`,
       ];
     }
 
@@ -122,11 +131,13 @@ app.post('/api/reverse-lookup', async (req, res) => {
         trailerWeight,
         tongueWeight,
         modelPreference: modelPreference || null,
+        hitchType,
       },
+      insights,
       results,
       notes: [
-        'Reverse lookup checks both chart tow capacity and chart payload capacity.',
-        'The calculator assumes conventional trailer tongue weight and uses RAM chart footnote hitch limits.',
+        'Setup recommendations check both RAM chart tow capacity and RAM chart payload capacity.',
+        'Open a Perkins inventory link, then run any candidate VIN back through the lookup on the left to confirm the exact axle and final rating.',
         ...inventoryNotes,
       ],
     });
@@ -142,7 +153,7 @@ app.use((_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-ensureChartTexts()
+Promise.all(SUPPORTED_CHART_YEARS.map((year) => ensureChartTexts(year)))
   .then(() => {
     app.listen(PORT, () => {
       console.log(`RAM Tow site running at http://localhost:${PORT}`);

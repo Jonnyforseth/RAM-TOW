@@ -23,6 +23,7 @@ const VERIFY_CONCURRENCY = 4;
 
 const inventoryCache = new Map();
 const verificationCache = new Map();
+const filterCache = new Map();
 
 function decodeHtml(value) {
   return String(value || '')
@@ -374,6 +375,146 @@ async function loadModelInventory(model) {
   });
 
   return cleanedItems;
+}
+
+function extractFilterValues(html, filterKey) {
+  const values = [];
+  const inputPattern = /<input\b[^>]*>/gi;
+
+  for (const match of html.matchAll(inputPattern)) {
+    const inputHtml = match[0];
+    const key = inputHtml.match(/data-filter-key="([^"]+)"/i)?.[1];
+    const value = inputHtml.match(/data-filter-value="([^"]+)"/i)?.[1];
+    if (!key || !value) {
+      continue;
+    }
+    if (key.toLowerCase() !== String(filterKey).toLowerCase()) {
+      continue;
+    }
+    values.push(decodeHtml(value.trim()));
+  }
+
+  return unique(values);
+}
+
+async function loadModelFilters(model) {
+  const baseUrl = MODEL_LISTING_URLS[model];
+  if (!baseUrl) {
+    return null;
+  }
+
+  const cached = filterCache.get(model);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  const html = await fetchText(baseUrl);
+  const value = {
+    baseUrl,
+    engines: extractFilterValues(html, 'engine'),
+    drivetrains: extractFilterValues(html, 'drivetrain'),
+    trims: extractFilterValues(html, 'trim'),
+  };
+
+  filterCache.set(model, {
+    fetchedAt: Date.now(),
+    value,
+  });
+
+  return value;
+}
+
+function matchesPerkinsEngineFilter(filterValue, engine) {
+  const text = normalizeText(filterValue);
+
+  switch (engine) {
+    case '3.6L Pentastar V6 eTorque':
+      return text.includes('3 6l') || text.includes('pentastar');
+    case '5.7L HEMI V8 eTorque':
+      return text.includes('5 7l') && text.includes('hemi');
+    case '3.0L Hurricane SO':
+      return text.includes('3 0l') && text.includes('hurricane') && text.includes('so');
+    case '3.0L Hurricane HO':
+      return text.includes('3 0l') && text.includes('hurricane') && text.includes('ho');
+    case '6.4L HEMI V8':
+      return text.includes('6 4l') && text.includes('hemi');
+    case '6.7L Cummins HO':
+      return text.includes('6 7l') && text.includes('i6');
+    default:
+      return false;
+  }
+}
+
+function getMatchingPerkinsEngineFilters(availableFilters, engine) {
+  return unique((availableFilters || []).filter((value) => matchesPerkinsEngineFilter(value, engine)));
+}
+
+function encodeFilterParam(key, values) {
+  const filtered = (Array.isArray(values) ? values : [values]).filter(Boolean);
+  if (!filtered.length) {
+    return null;
+  }
+
+  const encodedValue =
+    filtered.length === 1
+      ? encodeURIComponent(filtered[0])
+      : filtered.map((value) => encodeURIComponent(value)).join('~');
+
+  return `${encodeURIComponent(key)}=${encodedValue}`;
+}
+
+function buildFilteredInventoryUrl(row, filters) {
+  if (!filters?.baseUrl) {
+    return null;
+  }
+
+  const applied = [];
+  const advancedSearchUrl = new URL('https://perkinsmotors.com/advanced-search');
+  const engineValues = getMatchingPerkinsEngineFilters(filters.engines, row.engine);
+  const drivetrainValue = filters.drivetrains.find((value) => normalizeDrive(value) === row.drive);
+  const queryParts = [
+    encodeFilterParam('condition', 'new'),
+    encodeFilterParam('make', 'Ram'),
+    encodeFilterParam('model', String(row.model || '')),
+  ];
+
+  if (engineValues.length) {
+    queryParts.push(encodeFilterParam('engine', engineValues));
+    for (const value of engineValues) {
+      applied.push(`Engine: ${value}`);
+    }
+  }
+
+  if (drivetrainValue) {
+    queryParts.push(encodeFilterParam('drivetrain', drivetrainValue));
+    applied.push(`Drivetrain: ${drivetrainValue}`);
+  }
+
+  advancedSearchUrl.search = queryParts.filter(Boolean).join('&');
+
+  return {
+    url: advancedSearchUrl.toString(),
+    applied,
+  };
+}
+
+async function attachInventorySearchLinks(recommendations) {
+  const models = unique(recommendations.map((row) => row.model).filter((model) => MODEL_LISTING_URLS[model]));
+  const filtersByModel = Object.fromEntries(
+    await Promise.all(models.map(async (model) => [model, await loadModelFilters(model)]))
+  );
+
+  return {
+    source: 'https://perkinsmotors.com',
+    checkedAt: new Date().toISOString(),
+    results: recommendations.map((row) => {
+      const inventoryLink = buildFilteredInventoryUrl(row, filtersByModel[row.model]);
+      return {
+        ...row,
+        inventoryLink,
+      };
+    }),
+  };
 }
 
 function trimMatches(expected, actual) {
@@ -795,8 +936,10 @@ async function attachInventoryMatches(results, requirements = {}) {
 module.exports = {
   applyVerifiedCapacities,
   attachInventoryMatches,
+  attachInventorySearchLinks,
   buildCandidateProfile,
   findBestInventoryMatch,
+  getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
   scoreInventoryMatch,

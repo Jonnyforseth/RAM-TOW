@@ -8,11 +8,12 @@ const { findMatches, findRawChartHints, getOverrideOptions } = chartService;
 export async function onRequestGet(context) {
   try {
     const vinResult = await lookupVin(context.params.vin);
-    const matches = findMatches(vinResult.detectedSpec);
+    const chartYear = vinResult.detectedSpec.year;
+    const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
 
     let rawHints = [];
     try {
-      rawHints = await findRawChartHints(vinResult.detectedSpec);
+      rawHints = await findRawChartHints(vinResult.detectedSpec, { year: chartYear });
     } catch (_error) {
       rawHints = [];
     }
@@ -23,13 +24,14 @@ export async function onRequestGet(context) {
       pdfUrl: vinResult.pdfUrl,
       stickerTitle: vinResult.detectedSpec.stickerTitle,
       detectedSpec: vinResult.detectedSpec,
+      chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
       matches,
       overrideOptions: getOverrideOptions(vinResult.detectedSpec, matches),
       rawHints,
       notes: [
-        'Results are based on the 2026 RAM towing and payload PDFs loaded into this local site.',
+        `Results are based on the ${chartYear} RAM towing and payload PDFs loaded into this local site.`,
         'If bed length, GVWR, or rear wheel setup is missing from the sticker, use the override fields to lock in the exact configuration.',
       ],
     });

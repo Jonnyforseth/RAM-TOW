@@ -7,9 +7,14 @@ const {
   normalizeRearWheels,
 } = require('./chart-service');
 const { createPdfParser } = require('./pdf-runtime');
+const { DEFAULT_CHART_YEAR, SUPPORTED_CHART_YEARS } = require('../data/chart-data');
 
 const WINDOW_STICKER_BASE_URL = 'https://www.chrysler.com/hostd/windowsticker/getWindowStickerPdf.do?vin=';
 const NHTSA_BASE_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/';
+const VIN_MODEL_YEAR_MAP = {
+  S: 2025,
+  T: 2026,
+};
 
 function assertVin(vin) {
   const trimmed = String(vin || '').trim().toUpperCase();
@@ -42,8 +47,39 @@ async function fetchStickerText(vin) {
   };
 }
 
-async function decodeVin(vin) {
-  const response = await fetch(`${NHTSA_BASE_URL}${vin}?format=json&modelyear=2026`);
+function detectModelYearFromVin(vin) {
+  return VIN_MODEL_YEAR_MAP[String(vin || '').toUpperCase()[9]] || null;
+}
+
+function detectModelYearFromSticker(stickerText) {
+  const match = String(stickerText || '').match(/\b(20\d{2})\s+MODEL\s+YEAR\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+function resolveLookupYear(vin, stickerText, decoded = {}, preferredYear = null) {
+  const candidates = [
+    preferredYear,
+    detectModelYearFromSticker(stickerText),
+    Number(decoded?.ModelYear),
+    detectModelYearFromVin(vin),
+  ].filter(Number.isFinite);
+
+  const supportedYear = candidates.find((year) => SUPPORTED_CHART_YEARS.includes(year));
+  if (supportedYear) {
+    return supportedYear;
+  }
+
+  const detectedYear = candidates[0] || null;
+  if (detectedYear) {
+    throw new Error(`This lookup currently supports ${SUPPORTED_CHART_YEARS.join(' and ')} RAM charts. Detected ${detectedYear}.`);
+  }
+
+  return DEFAULT_CHART_YEAR;
+}
+
+async function decodeVin(vin, modelYear) {
+  const yearParam = Number.isFinite(modelYear) ? `&modelyear=${modelYear}` : '';
+  const response = await fetch(`${NHTSA_BASE_URL}${vin}?format=json${yearParam}`);
   if (!response.ok) {
     throw new Error(`NHTSA VIN decode failed with ${response.status}.`);
   }
@@ -163,12 +199,14 @@ function detectEngine(stickerText) {
   return normalizeEngine(engineLine);
 }
 
-function extractDetectedSpec(vin, stickerText, decoded) {
+function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
+  const year = resolveLookupYear(vin, stickerText, decoded, options.chartYear);
   const model = detectModel(vin, stickerText);
   const cab = detectCab(stickerText, decoded);
   const trim = detectTrim(stickerText, decoded);
   const spec = cleanSpec({
     vin,
+    year,
     model,
     drive: normalizeDrive(stickerText) || normalizeDrive(decoded.DriveType),
     cab,
@@ -182,16 +220,18 @@ function extractDetectedSpec(vin, stickerText, decoded) {
 
   return {
     ...spec,
+    year,
     model,
     trim,
-    stickerTitle: stickerText.match(/A 2026 MODEL YEAR\s+(.+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
+    stickerTitle: stickerText.match(/(?:A\s+)?20\d{2}\s+MODEL YEAR\s+([\s\S]+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   };
 }
 
 async function lookupVin(vinInput) {
   const vin = assertVin(vinInput);
-  const [{ pdfUrl, text }, decoded] = await Promise.all([fetchStickerText(vin), decodeVin(vin)]);
-  const detectedSpec = extractDetectedSpec(vin, text, decoded);
+  const vinYear = detectModelYearFromVin(vin);
+  const [{ pdfUrl, text }, decoded] = await Promise.all([fetchStickerText(vin), decodeVin(vin, vinYear)]);
+  const detectedSpec = extractDetectedSpec(vin, text, decoded, { chartYear: vinYear });
 
   return {
     vin,
@@ -206,6 +246,9 @@ module.exports = {
   WINDOW_STICKER_BASE_URL,
   assertVin,
   detectGVWR,
+  detectModelYearFromSticker,
+  detectModelYearFromVin,
   extractDetectedSpec,
   lookupVin,
+  resolveLookupYear,
 };
