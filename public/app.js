@@ -211,23 +211,6 @@ function closeScannerModal() {
   }
 }
 
-async function readVinBarcodeDetectorSupport() {
-  if (!('BarcodeDetector' in window)) {
-    return false;
-  }
-
-  if (typeof window.BarcodeDetector.getSupportedFormats !== 'function') {
-    return true;
-  }
-
-  try {
-    const formats = await window.BarcodeDetector.getSupportedFormats();
-    return VIN_BARCODE_FORMATS.some((format) => formats.includes(format));
-  } catch (_error) {
-    return true;
-  }
-}
-
 async function ensureScannerDetector() {
   if (scannerDetector) {
     return scannerDetector;
@@ -494,14 +477,3 @@ window.addEventListener('keydown', (event) => {
     closeScannerModal();
   }
 });
-
-(async () => {
-  if (!vinScanButton) {
-    return;
-  }
-
-  const supported = await readVinBarcodeDetectorSupport();
-  if (supported && navigator.mediaDevices?.getUserMedia) {
-    vinScanButton.classList.remove('hidden');
-  }
-})();
