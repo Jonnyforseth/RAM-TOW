@@ -299,11 +299,14 @@ function buildVinCapacitySummary(spec, matches, kind) {
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
 
+  const selectedDetails = [];
   if (spec.axleRatio) {
+    selectedDetails.push(`axle ratio ${spec.axleRatio}`);
     candidateRows = candidateRows.filter((row) => !row.axleRatio || row.axleRatio === spec.axleRatio);
   }
 
   if (spec.gvwr) {
+    selectedDetails.push(`GVWR ${formatNumber(spec.gvwr)} lb`);
     candidateRows = candidateRows.filter((row) => !row.gvwr || row.gvwr === spec.gvwr);
   } else {
     const gvwrMin = toNumber(spec.gvwrClassMin);
@@ -325,7 +328,17 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   if (!candidateRows.length) {
-    candidateRows = [primary];
+    return {
+      isRange: false,
+      selectionMismatch: selectedDetails.length > 0,
+      min: null,
+      max: null,
+      candidateCount: 0,
+      reasonText: selectedDetails.join(' and ') || null,
+      note: selectedDetails.length
+        ? `The selected ${selectedDetails.join(' and ')} does not have a matching RAM ${kind === 'payload' ? 'payload' : 'towing'} chart row for this detected truck setup. Check the door sticker and try another selection.`
+        : 'No matching RAM chart row was found for this truck setup.',
+    };
   }
 
   const capacityKey = kind === 'payload' ? 'maxPayload' : 'maxTow';
@@ -336,6 +349,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
 
   const summary = {
     isRange: needsRange,
+    selectionMismatch: false,
     min: values[0] ?? primary[capacityKey] ?? null,
     max: values.at(-1) ?? primary[capacityKey] ?? null,
     candidateCount: candidateRows.length,

@@ -295,6 +295,29 @@ test('buildVinCapacitySummary keeps an honest range for ambiguous 3500 gas HEMI 
   assert.match(towSummary.note, /axle ratio/i);
 });
 
+test('a selected GVWR never leaves a stale towing result when that chart row does not exist', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `8'`,
+    rearWheels: 'SRW',
+    axleRatio: '3.42',
+    gvwr: 12000,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.equal(towSummary.selectionMismatch, true);
+  assert.match(towSummary.note, /does not have a matching RAM towing chart row/i);
+  assert.equal(payloadSummary.selectionMismatch, false);
+  assert.equal(payloadSummary.min, 4310);
+});
+
 test('findMatches uses 2025 light-duty chart rows when the sticker is a 2025 truck', () => {
   const spec = cleanSpec({
     year: 2025,

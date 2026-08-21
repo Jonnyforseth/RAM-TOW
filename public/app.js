@@ -91,6 +91,7 @@ let vinScanResultLocked = false;
 let vinBaseSpec = null;
 let vinOverrideOptions = null;
 let vinRefinementRequest = 0;
+let vinRefinementAvailable = false;
 
 function renderInsight(item) {
   return `
@@ -184,6 +185,12 @@ function renderDetectedSpec(spec) {
 }
 
 function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, detectedSpec) {
+  if (summary?.selectionMismatch) {
+    capacityNode.textContent = 'No chart row';
+    detailNode.innerHTML = `<span class="metric-note">${escapeHtml(summary.note)}</span>`;
+    return;
+  }
+
   if (!match) {
     capacityNode.textContent = 'No clear match';
     detailNode.textContent = 'Try another VIN or verify the sticker details.';
@@ -241,13 +248,12 @@ function renderRefinementOptions(select, values, selectedValue, placeholder, for
 }
 
 function renderVinRefinement(response, spec) {
-  const needsRefinement = response.towSummary?.isRange || response.payloadSummary?.isRange;
   const axleOptions = vinOverrideOptions?.axleRatio || [];
   const gvwrOptions = vinOverrideOptions?.gvwr || [];
-  const showAxle = needsRefinement && !vinBaseSpec?.axleRatio && axleOptions.length > 1;
-  const showGvwr = needsRefinement && !vinBaseSpec?.gvwr && gvwrOptions.length > 1;
+  const showAxle = vinRefinementAvailable && !vinBaseSpec?.axleRatio && axleOptions.length > 1;
+  const showGvwr = vinRefinementAvailable && !vinBaseSpec?.gvwr && gvwrOptions.length > 1;
 
-  if (!needsRefinement || (!showAxle && !showGvwr)) {
+  if (!vinRefinementAvailable || (!showAxle && !showGvwr)) {
     vinRefinement.classList.add('hidden');
     return;
   }
@@ -286,6 +292,10 @@ function renderVinResponse(response, detectedSpec = response.detectedSpec) {
 function showVinLookupResponse(response) {
   vinBaseSpec = { ...response.detectedSpec };
   vinOverrideOptions = response.overrideOptions || {};
+  vinRefinementAvailable = Boolean(
+    (!vinBaseSpec.axleRatio && vinOverrideOptions.axleRatio?.length > 1) ||
+    (!vinBaseSpec.gvwr && vinOverrideOptions.gvwr?.length > 1)
+  );
   renderVinResponse(response, vinBaseSpec);
 }
 
@@ -326,7 +336,7 @@ function normalizeManualVin(value) {
   const cleaned = String(value || '')
     .toUpperCase()
     .replace(/[OQ]/g, '0')
-    .replace(/[IL]/g, '1')
+    .replace(/I/g, '1')
     .replace(/[^A-Z0-9]/g, '');
 
   return /^[A-HJ-NPR-Z0-9]{17}$/.test(cleaned) ? cleaned : null;
