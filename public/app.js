@@ -14,7 +14,6 @@ const towCapacity = document.querySelector('#tow-capacity');
 const towDetail = document.querySelector('#tow-detail');
 const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
-const alternateMatches = document.querySelector('#alternate-matches');
 const chartHints = document.querySelector('#chart-hints');
 const overrideTemplate = document.querySelector('#override-template');
 
@@ -143,27 +142,6 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind) {
   detailNode.innerHTML = lines.join('<br>');
 }
 
-function renderAlternates(response) {
-  alternateMatches.innerHTML = '';
-  const all = [
-    ...(response.matches?.towMatches || []).slice(0, 3).map((row) => ({ ...row, type: 'Tow' })),
-    ...(response.matches?.payloadMatches || []).slice(0, 3).map((row) => ({ ...row, type: 'Payload' })),
-  ];
-
-  for (const item of all) {
-    const card = document.createElement('article');
-    card.className = 'alternate-card';
-    card.innerHTML = `
-      <h4>${item.type}: ${item.model} ${item.cab} ${item.bed} ${item.drive}</h4>
-      <p>${item.engine}</p>
-      <p>${item.type === 'Tow' ? `Tow ${formatCapacity(item.maxTow)}` : `Payload ${formatCapacity(item.maxPayload)}`}</p>
-      <p>${item.axleRatio ? `Axle ${item.axleRatio}` : ''} ${item.gvwr ? `GVWR ${formatNumber(item.gvwr)} lb` : ''}</p>
-      ${item.confidence === 'medium' ? '<span class="confidence">Needs quick chart check</span>' : ''}
-    `;
-    alternateMatches.appendChild(card);
-  }
-}
-
 function renderHints(hints) {
   chartHints.innerHTML = '';
   if (!hints?.length) {
@@ -217,7 +195,6 @@ function renderVinResponse(response) {
   renderOverrideGrid(response.detectedSpec, response.overrideOptions);
   renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow');
   renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload');
-  renderAlternates(response);
   renderHints(response.rawHints);
   vinResults.classList.remove('hidden');
 }
