@@ -10,7 +10,9 @@ const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
 const scannerModal = document.querySelector('#scanner-modal');
+const scannerViewport = document.querySelector('.scanner-viewport');
 const scannerVideo = document.querySelector('#scanner-video');
+const scannerFrame = document.querySelector('.scanner-frame');
 const scannerStatus = document.querySelector('#scanner-status');
 const scannerCloseButton = document.querySelector('#scanner-close');
 
@@ -388,9 +390,92 @@ function captureScannerFrameCanvas() {
   return canvas;
 }
 
+function getVideoCoverMetrics() {
+  if (!scannerVideo || !scannerViewport || !scannerVideo.videoWidth || !scannerVideo.videoHeight) {
+    return null;
+  }
+
+  const viewportWidth = scannerViewport.clientWidth;
+  const viewportHeight = scannerViewport.clientHeight;
+  if (!viewportWidth || !viewportHeight) {
+    return null;
+  }
+
+  const sourceWidth = scannerVideo.videoWidth;
+  const sourceHeight = scannerVideo.videoHeight;
+  const scale = Math.max(viewportWidth / sourceWidth, viewportHeight / sourceHeight);
+  const renderedWidth = sourceWidth * scale;
+  const renderedHeight = sourceHeight * scale;
+  const offsetX = (viewportWidth - renderedWidth) / 2;
+  const offsetY = (viewportHeight - renderedHeight) / 2;
+
+  return {
+    viewportWidth,
+    viewportHeight,
+    sourceWidth,
+    sourceHeight,
+    scale,
+    offsetX,
+    offsetY,
+  };
+}
+
+function clampRegion(region, width, height) {
+  const left = Math.max(0, Math.min(width - 1, region.left));
+  const top = Math.max(0, Math.min(height - 1, region.top));
+  const right = Math.max(left + 1, Math.min(width, region.left + region.width));
+  const bottom = Math.max(top + 1, Math.min(height, region.top + region.height));
+
+  return {
+    left,
+    top,
+    width: right - left,
+    height: bottom - top,
+  };
+}
+
 function getOcrRegions(frameCanvas) {
   const width = frameCanvas.width;
   const height = frameCanvas.height;
+  const metrics = getVideoCoverMetrics();
+  const frameRect = scannerFrame?.getBoundingClientRect();
+  const viewportRect = scannerViewport?.getBoundingClientRect();
+
+  if (metrics && frameRect && viewportRect) {
+    const frameLeft = frameRect.left - viewportRect.left;
+    const frameTop = frameRect.top - viewportRect.top;
+    const baseRegion = {
+      left: (frameLeft - metrics.offsetX) / metrics.scale,
+      top: (frameTop - metrics.offsetY) / metrics.scale,
+      width: frameRect.width / metrics.scale,
+      height: frameRect.height / metrics.scale,
+    };
+
+    const verticalPad = baseRegion.height * 0.55;
+    const horizontalPad = baseRegion.width * 0.1;
+
+    return [
+      clampRegion(baseRegion, width, height),
+      clampRegion({
+        left: baseRegion.left - horizontalPad,
+        top: baseRegion.top - (verticalPad * 0.45),
+        width: baseRegion.width + (horizontalPad * 2),
+        height: baseRegion.height + verticalPad,
+      }, width, height),
+      clampRegion({
+        left: baseRegion.left - (horizontalPad * 0.5),
+        top: baseRegion.top - verticalPad,
+        width: baseRegion.width + horizontalPad,
+        height: baseRegion.height + (verticalPad * 1.7),
+      }, width, height),
+      clampRegion({
+        left: width * 0.08,
+        top: height * 0.34,
+        width: width * 0.84,
+        height: height * 0.28,
+      }, width, height),
+    ];
+  }
 
   return [
     {
@@ -459,7 +544,9 @@ function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
     const normalized = ((data[index] - min) / range) * 255;
     let output = normalized;
 
-    if (mode === 'threshold') {
+    if (mode === 'grayscale') {
+      output = Math.max(0, Math.min(255, (normalized - 128) * 1.18 + 128));
+    } else if (mode === 'threshold') {
       output = normalized > threshold ? 255 : 0;
     } else if (mode === 'invert-threshold') {
       output = normalized > threshold ? 0 : 255;
@@ -561,7 +648,7 @@ async function readVinTextFromCamera() {
 
   const worker = await ensureVinOcrWorker();
   const regions = getOcrRegions(frameCanvas);
-  const modes = ['threshold', 'contrast', 'invert-threshold'];
+  const modes = ['grayscale', 'threshold', 'contrast', 'invert-threshold'];
 
   for (const region of regions) {
     for (const mode of modes) {
