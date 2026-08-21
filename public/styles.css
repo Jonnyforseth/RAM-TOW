@@ -273,6 +273,10 @@ body::before {
     linear-gradient(180deg, #d8ba87 0%, #b18e5d 100%);
 }
 
+#vin-scan-button {
+  display: none;
+}
+
 .microcopy {
   margin: 0;
   color: var(--ink-soft);
@@ -534,6 +538,13 @@ body::before {
   color: rgba(246, 240, 231, 0.86);
 }
 
+.scanner-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .scanner-viewport {
   position: relative;
   overflow: hidden;
@@ -624,6 +635,10 @@ body::before {
 
   .button-stack {
     width: 100%;
+  }
+
+  #vin-scan-button {
+    display: inline-block;
   }
 
   .hero h1,

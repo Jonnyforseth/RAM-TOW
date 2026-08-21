@@ -109,17 +109,21 @@
           <h3>Scan VIN Barcode</h3>
           <button id="scanner-close" type="button" class="scanner-close" aria-label="Close VIN scanner">Close</button>
         </div>
-        <p class="scanner-copy">Point your camera at the VIN barcode on the door sticker. We will fill the VIN automatically when we catch a clean read.</p>
+        <p class="scanner-copy">Point your camera at the VIN barcode on the door sticker. If the bars do not hit, use the printed VIN text reader below.</p>
         <div class="scanner-viewport">
           <video id="scanner-video" autoplay playsinline muted></video>
           <div class="scanner-frame" aria-hidden="true"></div>
         </div>
         <div id="scanner-fallback-host" class="scanner-fallback hidden"></div>
+        <div class="scanner-actions">
+          <button id="scanner-ocr-button" type="button" class="button button-secondary">Read VIN Text</button>
+        </div>
         <p id="scanner-status" class="scanner-status">Starting camera…</p>
       </div>
     </div>
 
     <script src="/vendor/html5-qrcode.min.js"></script>
+    <script src="/vendor/tesseract.min.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
