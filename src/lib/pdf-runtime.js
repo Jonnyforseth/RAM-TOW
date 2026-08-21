@@ -59,12 +59,31 @@ function ensurePdfRuntimeGlobals() {
 }
 
 let pdfParseModulePromise = null;
+let pdfWorkerModulePromise = null;
+
+async function getPdfWorkerModule() {
+  ensurePdfRuntimeGlobals();
+
+  if (!pdfWorkerModulePromise) {
+    pdfWorkerModulePromise = import('pdf-parse/worker');
+  }
+
+  return pdfWorkerModulePromise;
+}
 
 async function getPdfParseModule() {
   ensurePdfRuntimeGlobals();
 
   if (!pdfParseModulePromise) {
-    pdfParseModulePromise = import('pdf-parse');
+    pdfParseModulePromise = (async () => {
+      const workerModule = await getPdfWorkerModule();
+      const module = await import('pdf-parse');
+      module.PDFParse.setWorker(workerModule.getData());
+      return {
+        ...module,
+        CanvasFactory: workerModule.CanvasFactory,
+      };
+    })();
   }
 
   return pdfParseModulePromise;
@@ -72,7 +91,10 @@ async function getPdfParseModule() {
 
 async function createPdfParser(data) {
   const module = await getPdfParseModule();
-  return new module.PDFParse({ data });
+  return new module.PDFParse({
+    data,
+    CanvasFactory: module.CanvasFactory,
+  });
 }
 
 module.exports = {
