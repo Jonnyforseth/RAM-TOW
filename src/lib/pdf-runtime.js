@@ -73,25 +73,14 @@ function toUint8Array(data) {
 
 let pdfjsModulePromise = null;
 
-function isNodeRuntime() {
-  return typeof process === 'object' && !!process?.versions?.node;
-}
-
 async function getPdfjsModule() {
   ensurePdfRuntimeGlobals();
 
   if (!pdfjsModulePromise) {
     pdfjsModulePromise = (async () => {
-      const pdfModulePath = isNodeRuntime()
-        ? 'pdfjs-dist/legacy/build/pdf.mjs'
-        : 'pdfjs-dist/build/pdf.mjs';
-      const workerModulePath = isNodeRuntime()
-        ? 'pdfjs-dist/legacy/build/pdf.worker.mjs'
-        : 'pdfjs-dist/build/pdf.worker.mjs';
-
       const [pdfjs, pdfjsWorker] = await Promise.all([
-        import(pdfModulePath),
-        import(workerModulePath),
+        import('pdfjs-dist/build/pdf.mjs'),
+        import('pdfjs-dist/build/pdf.worker.mjs'),
       ]);
 
       // Preload the worker into the main thread so serverless runtimes do not
