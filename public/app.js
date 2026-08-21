@@ -9,12 +9,7 @@ const towDetail = document.querySelector('#tow-detail');
 const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
-const scannerModal = document.querySelector('#scanner-modal');
-const scannerViewport = document.querySelector('.scanner-viewport');
-const scannerVideo = document.querySelector('#scanner-video');
-const scannerFrame = document.querySelector('.scanner-frame');
-const scannerStatus = document.querySelector('#scanner-status');
-const scannerCloseButton = document.querySelector('#scanner-close');
+const vinScanInput = document.querySelector('#vin-scan-input');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -29,7 +24,6 @@ const reverseInputs = [
 ];
 
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
-const VIN_OCR_INTERVAL_MS = 1200;
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
 const VIN_TRANSLITERATION = {
   A: 1,
@@ -76,12 +70,6 @@ const VIN_OCR_SUBSTITUTIONS = {
   Z: ['Z', '2'],
 };
 
-let scannerStream = null;
-let scannerLoopHandle = 0;
-let scannerActive = false;
-let scannerBusy = false;
-let scannerLastAttemptAt = 0;
-let scannerMissCount = 0;
 let vinOcrWorker = null;
 let vinOcrWorkerReady = null;
 
@@ -254,6 +242,9 @@ function scoreVinCandidate(vin, replacements) {
   if (vin.startsWith('1C6') || vin.startsWith('3C6')) {
     score += 40;
   }
+  if (vin.includes('RAM')) {
+    score += 4;
+  }
   return score;
 }
 
@@ -261,8 +252,7 @@ function generateVinVariants(candidate) {
   const sanitized = String(candidate || '')
     .toUpperCase()
     .replace(/[|]/g, 'I')
-    .replace(/[“”"]/g, '')
-    .replace(/[‘’']/g, '')
+    .replace(/["']/g, '')
     .replace(/[^A-Z0-9]/g, '');
 
   if (sanitized.length !== 17) {
@@ -322,8 +312,6 @@ function extractVinFromOcrText(value) {
   const text = String(value || '')
     .toUpperCase()
     .replace(/[|]/g, 'I')
-    .replace(/[“”"]/g, '')
-    .replace(/[‘’']/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -357,67 +345,11 @@ function extractVinFromOcrText(value) {
   return best?.vin || null;
 }
 
-function setScannerStatus(message, isError = false) {
-  if (!scannerStatus) {
-    return;
-  }
-  scannerStatus.textContent = message;
-  scannerStatus.style.color = isError ? '#f3b0a6' : 'rgba(246, 240, 231, 0.86)';
-}
-
-function cancelScannerLoop() {
-  if (scannerLoopHandle) {
-    cancelAnimationFrame(scannerLoopHandle);
-    scannerLoopHandle = 0;
-  }
-}
-
 function createCanvas(width, height) {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(width));
   canvas.height = Math.max(1, Math.floor(height));
   return canvas;
-}
-
-function captureScannerFrameCanvas() {
-  if (!scannerVideo || scannerVideo.readyState < 2 || !scannerVideo.videoWidth || !scannerVideo.videoHeight) {
-    return null;
-  }
-
-  const canvas = createCanvas(scannerVideo.videoWidth, scannerVideo.videoHeight);
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  context.drawImage(scannerVideo, 0, 0, canvas.width, canvas.height);
-  return canvas;
-}
-
-function getVideoCoverMetrics() {
-  if (!scannerVideo || !scannerViewport || !scannerVideo.videoWidth || !scannerVideo.videoHeight) {
-    return null;
-  }
-
-  const viewportWidth = scannerViewport.clientWidth;
-  const viewportHeight = scannerViewport.clientHeight;
-  if (!viewportWidth || !viewportHeight) {
-    return null;
-  }
-
-  const sourceWidth = scannerVideo.videoWidth;
-  const sourceHeight = scannerVideo.videoHeight;
-  const scale = Math.max(viewportWidth / sourceWidth, viewportHeight / sourceHeight);
-  const renderedWidth = sourceWidth * scale;
-  const renderedHeight = sourceHeight * scale;
-  const offsetX = (viewportWidth - renderedWidth) / 2;
-  const offsetY = (viewportHeight - renderedHeight) / 2;
-
-  return {
-    viewportWidth,
-    viewportHeight,
-    sourceWidth,
-    sourceHeight,
-    scale,
-    offsetX,
-    offsetY,
-  };
 }
 
 function clampRegion(region, width, height) {
@@ -434,77 +366,52 @@ function clampRegion(region, width, height) {
   };
 }
 
-function getOcrRegions(frameCanvas) {
+async function loadImageFromFile(file) {
+  return await new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not open that photo. Try taking another picture of the VIN sticker.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function buildPhotoCanvas(image) {
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  const maxDimension = 2200;
+  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+  const canvas = createCanvas(sourceWidth * scale, sourceHeight * scale);
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function getPhotoOcrRegions(frameCanvas) {
   const width = frameCanvas.width;
   const height = frameCanvas.height;
-  const metrics = getVideoCoverMetrics();
-  const frameRect = scannerFrame?.getBoundingClientRect();
-  const viewportRect = scannerViewport?.getBoundingClientRect();
-
-  if (metrics && frameRect && viewportRect) {
-    const frameLeft = frameRect.left - viewportRect.left;
-    const frameTop = frameRect.top - viewportRect.top;
-    const baseRegion = {
-      left: (frameLeft - metrics.offsetX) / metrics.scale,
-      top: (frameTop - metrics.offsetY) / metrics.scale,
-      width: frameRect.width / metrics.scale,
-      height: frameRect.height / metrics.scale,
-    };
-
-    const verticalPad = baseRegion.height * 0.55;
-    const horizontalPad = baseRegion.width * 0.1;
-
-    return [
-      clampRegion(baseRegion, width, height),
-      clampRegion({
-        left: baseRegion.left - horizontalPad,
-        top: baseRegion.top - (verticalPad * 0.45),
-        width: baseRegion.width + (horizontalPad * 2),
-        height: baseRegion.height + verticalPad,
-      }, width, height),
-      clampRegion({
-        left: baseRegion.left - (horizontalPad * 0.5),
-        top: baseRegion.top - verticalPad,
-        width: baseRegion.width + horizontalPad,
-        height: baseRegion.height + (verticalPad * 1.7),
-      }, width, height),
-      clampRegion({
-        left: width * 0.08,
-        top: height * 0.34,
-        width: width * 0.84,
-        height: height * 0.28,
-      }, width, height),
-    ];
-  }
 
   return [
-    {
-      left: width * 0.1,
-      top: height * 0.42,
-      width: width * 0.8,
-      height: height * 0.16,
-    },
-    {
-      left: width * 0.08,
-      top: height * 0.38,
-      width: width * 0.84,
-      height: height * 0.22,
-    },
-    {
-      left: width * 0.12,
-      top: height * 0.46,
-      width: width * 0.76,
-      height: height * 0.12,
-    },
+    clampRegion({ left: 0, top: 0, width, height }, width, height),
+    clampRegion({ left: width * 0.04, top: height * 0.2, width: width * 0.92, height: height * 0.62 }, width, height),
+    clampRegion({ left: width * 0.08, top: height * 0.32, width: width * 0.84, height: height * 0.42 }, width, height),
+    clampRegion({ left: width * 0.1, top: height * 0.42, width: width * 0.8, height: height * 0.22 }, width, height),
+    clampRegion({ left: width * 0.08, top: height * 0.48, width: width * 0.84, height: height * 0.16 }, width, height),
   ];
 }
 
 function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
-  const scale = 3;
+  const scale = 2.6;
   const canvas = createCanvas(region.width * scale, region.height * scale);
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context.imageSmoothingEnabled = false;
-  context.filter = 'grayscale(1) contrast(1.45) brightness(1.08)';
+  context.filter = 'grayscale(1) contrast(1.38) brightness(1.06)';
   context.drawImage(
     frameCanvas,
     region.left,
@@ -545,13 +452,13 @@ function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
     let output = normalized;
 
     if (mode === 'grayscale') {
-      output = Math.max(0, Math.min(255, (normalized - 128) * 1.18 + 128));
+      output = Math.max(0, Math.min(255, (normalized - 128) * 1.15 + 128));
     } else if (mode === 'threshold') {
       output = normalized > threshold ? 255 : 0;
     } else if (mode === 'invert-threshold') {
       output = normalized > threshold ? 0 : 255;
     } else if (mode === 'contrast') {
-      output = normalized > 220 ? 255 : Math.max(0, Math.min(255, normalized * 1.1));
+      output = normalized > 220 ? 255 : Math.max(0, Math.min(255, normalized * 1.08));
     }
 
     data[index] = output;
@@ -561,16 +468,6 @@ function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
 
   context.putImageData(imageData, 0, 0);
   return canvas;
-}
-
-function stopScannerStream() {
-  if (!scannerStream) {
-    return;
-  }
-  for (const track of scannerStream.getTracks()) {
-    track.stop();
-  }
-  scannerStream = null;
 }
 
 async function ensureVinOcrWorker() {
@@ -593,7 +490,7 @@ async function ensureVinOcrWorker() {
 
     await worker.setParameters({
       tessedit_char_whitelist: VIN_OCR_WHITELIST,
-      tessedit_pageseg_mode: '7',
+      tessedit_pageseg_mode: '6',
       preserve_interword_spaces: '0',
       user_defined_dpi: '300',
     });
@@ -623,31 +520,9 @@ async function terminateVinOcrWorker() {
   vinOcrWorker = null;
 }
 
-async function closeScannerModal() {
-  scannerActive = false;
-  scannerBusy = false;
-  scannerLastAttemptAt = 0;
-  scannerMissCount = 0;
-  cancelScannerLoop();
-  stopScannerStream();
-  if (scannerVideo) {
-    scannerVideo.pause();
-    scannerVideo.srcObject = null;
-  }
-  if (scannerModal) {
-    scannerModal.classList.add('hidden');
-    scannerModal.setAttribute('aria-hidden', 'true');
-  }
-}
-
-async function readVinTextFromCamera() {
-  const frameCanvas = captureScannerFrameCanvas();
-  if (!frameCanvas) {
-    throw new Error('Camera frame is not ready yet. Hold steady for a second.');
-  }
-
+async function readVinFromCanvas(frameCanvas) {
   const worker = await ensureVinOcrWorker();
-  const regions = getOcrRegions(frameCanvas);
+  const regions = getPhotoOcrRegions(frameCanvas);
   const modes = ['grayscale', 'threshold', 'contrast', 'invert-threshold'];
 
   for (const region of regions) {
@@ -661,11 +536,10 @@ async function readVinTextFromCamera() {
     }
   }
 
-  throw new Error('Could not read a clean VIN from the printed label yet. Move closer and center only the printed VIN line inside the frame.');
+  throw new Error('Could not read a clean VIN from that photo. Take a closer picture of the white sticker so the VIN line is readable and try again.');
 }
 
 async function processDetectedVin(vin) {
-  await closeScannerModal();
   vinInput.value = vin;
   showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
   vinResults.classList.add('hidden');
@@ -679,82 +553,37 @@ async function processDetectedVin(vin) {
   }
 }
 
-async function scanVinTextLoop() {
-  if (!scannerActive) {
+async function processVinPhoto(file) {
+  if (!file) {
     return;
   }
 
-  scannerLoopHandle = requestAnimationFrame(scanVinTextLoop);
-
-  if (scannerBusy || !scannerVideo || scannerVideo.readyState < 2) {
-    return;
-  }
-
-  const now = performance.now();
-  if (now - scannerLastAttemptAt < VIN_OCR_INTERVAL_MS) {
-    return;
-  }
-
-  scannerLastAttemptAt = now;
-  scannerBusy = true;
+  showStatus(vinStatus, 'Reading VIN from photo...');
+  vinResults.classList.add('hidden');
 
   try {
-    const vin = await readVinTextFromCamera();
-    setScannerStatus(`VIN found: ${vin}`);
+    const image = await loadImageFromFile(file);
+    const canvas = buildPhotoCanvas(image);
+    const vin = await readVinFromCanvas(canvas);
     await processDetectedVin(vin);
   } catch (error) {
-    scannerMissCount += 1;
-    if (scannerMissCount === 1) {
-      setScannerStatus('Reading the printed VIN text automatically...');
-    } else if (scannerMissCount % 3 === 0) {
-      setScannerStatus(error.message || 'Still reading... move closer and keep the VIN line level inside the frame.');
-    }
+    showStatus(vinStatus, error.message || 'Could not read the VIN from that photo.', true);
   } finally {
-    scannerBusy = false;
+    if (vinScanInput) {
+      vinScanInput.value = '';
+    }
   }
 }
 
-async function openScannerModal() {
-  hideStatus(vinStatus);
-  if (scannerModal) {
-    scannerModal.classList.remove('hidden');
-    scannerModal.setAttribute('aria-hidden', 'false');
-  }
-  setScannerStatus('Starting camera...');
-
-  if (!navigator.mediaDevices?.getUserMedia) {
-    await closeScannerModal();
-    showStatus(vinStatus, 'This device does not allow live camera access here. Type the VIN manually.', true);
+function triggerVinPhotoCapture() {
+  if (!vinScanInput) {
+    showStatus(vinStatus, 'This device does not support VIN photo capture here. Type the VIN manually.', true);
     return;
   }
 
-  try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    });
-
-    if (!scannerVideo) {
-      throw new Error('Scanner video surface is missing.');
-    }
-
-    scannerVideo.srcObject = scannerStream;
-    await scannerVideo.play();
-    scannerActive = true;
-    scannerBusy = false;
-    scannerMissCount = 0;
-    scannerLastAttemptAt = 0;
-    cancelScannerLoop();
-    setScannerStatus('Center the printed VIN line inside the frame. We will read it automatically.');
-    scannerLoopHandle = requestAnimationFrame(scanVinTextLoop);
-  } catch (error) {
-    await closeScannerModal();
-    showStatus(vinStatus, error.message || 'Could not open the camera. Type the VIN manually.', true);
-  }
+  showStatus(vinStatus, 'Take a clear photo of the white door-jamb sticker. Make sure the VIN line is visible.');
+  vinScanInput.value = '';
+  vinScanInput.click();
 }
 
 async function fetchJson(url, options) {
@@ -804,20 +633,15 @@ vinForm.addEventListener('submit', async (event) => {
 
 if (vinScanButton) {
   vinScanButton.addEventListener('click', () => {
-    void openScannerModal();
+    triggerVinPhotoCapture();
   });
 }
 
-if (scannerCloseButton) {
-  scannerCloseButton.addEventListener('click', () => {
-    void closeScannerModal();
-  });
-}
-
-if (scannerModal) {
-  scannerModal.addEventListener('click', (event) => {
-    if (event.target === scannerModal) {
-      void closeScannerModal();
+if (vinScanInput) {
+  vinScanInput.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void processVinPhoto(file);
     }
   });
 }
@@ -901,12 +725,5 @@ window.addEventListener('pageshow', () => {
 });
 
 window.addEventListener('beforeunload', () => {
-  void closeScannerModal();
   void terminateVinOcrWorker();
-});
-
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && scannerActive) {
-    void closeScannerModal();
-  }
 });

@@ -103,21 +103,7 @@
       </main>
     </div>
 
-    <div id="scanner-modal" class="scanner-modal hidden" aria-hidden="true">
-      <div class="scanner-panel">
-        <div class="scanner-head">
-          <h3>Scan VIN</h3>
-          <button id="scanner-close" type="button" class="scanner-close" aria-label="Close VIN scanner">Close</button>
-        </div>
-        <p class="scanner-copy">Center the printed VIN line from the door sticker inside the frame. The scanner will read it automatically.</p>
-        <div class="scanner-viewport">
-          <video id="scanner-video" autoplay playsinline muted></video>
-          <div class="scanner-frame" aria-hidden="true"></div>
-        </div>
-        <p id="scanner-status" class="scanner-status">Starting camera...</p>
-      </div>
-    </div>
-
+    <input id="vin-scan-input" type="file" accept="image/*" capture="environment" hidden>
     <script src="/vendor/tesseract.min.js"></script>
     <script src="/app.js"></script>
   </body>
