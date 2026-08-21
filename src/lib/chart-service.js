@@ -302,6 +302,10 @@ async function ensureChartTexts() {
   }
 
   for (const [key, path] of Object.entries(PDF_PATHS)) {
+    if (!path || !fs.existsSync(path)) {
+      chartCache.texts[key] = '';
+      continue;
+    }
     const parser = new PDFParse({ data: fs.readFileSync(path) });
     const result = await parser.getText();
     chartCache.texts[key] = result.text;

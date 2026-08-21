@@ -232,9 +232,22 @@ function collectOverrideSpec() {
 
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
-  const payload = await response.json();
+  const raw = await response.text();
+  let payload = null;
+
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch (_error) {
+    const snippet = raw
+      .replace(/\s+/g, ' ')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+      .slice(0, 180);
+    throw new Error(snippet || `Request failed with ${response.status}.`);
+  }
+
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'Request failed.');
+    throw new Error(payload.error || `Request failed with ${response.status}.`);
   }
   return payload;
 }
