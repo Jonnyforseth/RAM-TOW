@@ -3,11 +3,20 @@ import chartService from '../../../src/lib/chart-service.js';
 import { json, errorResponse } from '../../_shared/http.js';
 
 const { lookupVin } = stickerService;
-const { findMatches, findRawChartHints, getOverrideOptions } = chartService;
+const { buildVinCapacitySummary, findMatches, findRawChartHints, getOverrideOptions } = chartService;
 
 export async function onRequestGet(context) {
   try {
     const vinResult = await lookupVin(context.params.vin);
+
+    if (vinResult.detectedSpec?.stickerAvailable === false) {
+      return json({
+        ok: false,
+        errorCode: 'STICKER_OFFLINE',
+        error: 'Window sticker is offline for this truck right now. Try again.',
+      }, 503);
+    }
+
     const chartYear = vinResult.detectedSpec.year;
     const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
 
@@ -27,6 +36,8 @@ export async function onRequestGet(context) {
       chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
+      towSummary: buildVinCapacitySummary(vinResult.detectedSpec, matches, 'tow'),
+      payloadSummary: buildVinCapacitySummary(vinResult.detectedSpec, matches, 'payload'),
       matches,
       overrideOptions: getOverrideOptions(vinResult.detectedSpec, matches),
       rawHints,

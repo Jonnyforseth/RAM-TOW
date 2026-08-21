@@ -269,6 +269,96 @@ function hasDisallowedMismatch(scoreInfo) {
   return scoreInfo.mismatches.some((key) => CRITICAL_MISMATCH_KEYS.has(key));
 }
 
+function sameMatchFamily(left, right) {
+  return ['model', 'engine', 'drive', 'cab', 'bed', 'rearWheels']
+    .every((key) => (left?.[key] || null) === (right?.[key] || null));
+}
+
+function listToSentence(items) {
+  if (!items.length) {
+    return '';
+  }
+  if (items.length === 1) {
+    return items[0];
+  }
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+}
+
+function buildVinCapacitySummary(spec, matches, kind) {
+  const matchList = kind === 'payload' ? matches.payloadMatches || [] : matches.towMatches || [];
+  const primary = matchList[0] || null;
+
+  if (!primary) {
+    return null;
+  }
+
+  let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
+
+  if (spec.axleRatio) {
+    candidateRows = candidateRows.filter((row) => !row.axleRatio || row.axleRatio === spec.axleRatio);
+  }
+
+  if (spec.gvwr) {
+    candidateRows = candidateRows.filter((row) => !row.gvwr || row.gvwr === spec.gvwr);
+  } else {
+    const gvwrMin = toNumber(spec.gvwrClassMin);
+    const gvwrMax = toNumber(spec.gvwrClassMax);
+    if (gvwrMin || gvwrMax) {
+      candidateRows = candidateRows.filter((row) => {
+        if (!row.gvwr) {
+          return true;
+        }
+        if (gvwrMin && row.gvwr < gvwrMin) {
+          return false;
+        }
+        if (gvwrMax && row.gvwr > gvwrMax) {
+          return false;
+        }
+        return true;
+      });
+    }
+  }
+
+  if (!candidateRows.length) {
+    candidateRows = [primary];
+  }
+
+  const capacityKey = kind === 'payload' ? 'maxPayload' : 'maxTow';
+  const values = Array.from(new Set(candidateRows.map((row) => row[capacityKey]).filter(Number.isFinite))).sort((a, b) => a - b);
+  const axleValues = Array.from(new Set(candidateRows.map((row) => row.axleRatio).filter(Boolean)));
+  const gvwrValues = Array.from(new Set(candidateRows.map((row) => row.gvwr).filter(Number.isFinite)));
+  const needsRange = values.length > 1 && (!spec.axleRatio || !spec.gvwr);
+
+  const summary = {
+    isRange: needsRange,
+    min: values[0] ?? primary[capacityKey] ?? null,
+    max: values.at(-1) ?? primary[capacityKey] ?? null,
+    candidateCount: candidateRows.length,
+    reasonText: null,
+    note: null,
+  };
+
+  if (!needsRange) {
+    return summary;
+  }
+
+  const reasons = [];
+  if (!spec.axleRatio && axleValues.length > 1) {
+    reasons.push('axle ratio');
+  }
+  if (!spec.gvwr && gvwrValues.length > 1) {
+    reasons.push('door-sticker GVWR');
+  }
+
+  summary.reasonText = listToSentence(reasons) || 'sticker details';
+  summary.note = `Range shown because the window sticker does not clearly confirm ${summary.reasonText}. Confirm on the door sticker or with your dealer.`;
+
+  return summary;
+}
+
 function findMatches(spec, options = {}) {
   const chartYear = resolveChartYear(options.year || spec?.year);
   const towRowsForYear = getTowRows(chartYear);
@@ -639,6 +729,7 @@ function formatNumber(value) {
 module.exports = {
   buildReverseInsights,
   buildReverseRecommendations,
+  buildVinCapacitySummary,
   cleanSpec,
   collectReverseLookupRows,
   ensureChartTexts,

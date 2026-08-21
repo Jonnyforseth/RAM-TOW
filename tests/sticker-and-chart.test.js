@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildReverseInsights, buildReverseRecommendations, cleanSpec, findMatches } = require('../src/lib/chart-service');
+const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches } = require('../src/lib/chart-service');
 const { detectGVWR, detectModelYearFromVin, extractDetectedSpec } = require('../src/lib/sticker-service');
 
 test('detectModelYearFromVin reads 2025 and 2026 model years from the VIN', () => {
@@ -154,6 +154,106 @@ test('findMatches selects the Regular Cab long-box HD tow row for reg cab sticke
   assert.equal(matches.payloadMatches[0].cab, 'Regular');
   assert.equal(matches.payloadMatches[0].bed, `8'`);
   assert.equal(matches.payloadMatches[0].maxPayload, 2550);
+});
+
+test('findMatches returns the 2026 gas 2500 crew long-bed row instead of falling through to no match', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '2500',
+    engine: '6.4L HEMI V8',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `8'`,
+    rearWheels: 'SRW',
+    axleRatio: '3.73',
+    gvwr: 9900,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+
+  assert.equal(matches.towMatches[0].cab, 'Crew');
+  assert.equal(matches.towMatches[0].bed, `8'`);
+  assert.equal(matches.towMatches[0].maxTow, 14730);
+  assert.equal(matches.payloadMatches[0].cab, 'Crew');
+  assert.equal(matches.payloadMatches[0].bed, `8'`);
+  assert.equal(matches.payloadMatches[0].maxPayload, 3020);
+});
+
+test('findMatches keeps the 2025 gas 2500 crew long-bed row on the 2025 chart set', () => {
+  const spec = cleanSpec({
+    year: 2025,
+    model: '2500',
+    engine: '6.4L HEMI V8',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `8'`,
+    rearWheels: 'SRW',
+    axleRatio: '4.10',
+    gvwr: 10000,
+  });
+
+  const matches = findMatches(spec, { year: 2025 });
+
+  assert.equal(matches.towMatches[0].cab, 'Crew');
+  assert.equal(matches.towMatches[0].bed, `8'`);
+  assert.equal(matches.towMatches[0].maxTow, 16920);
+  assert.equal(matches.payloadMatches[0].cab, 'Crew');
+  assert.equal(matches.payloadMatches[0].bed, `8'`);
+  assert.equal(matches.payloadMatches[0].maxPayload, 3110);
+});
+
+test('buildVinCapacitySummary returns a range when the sticker does not pin down axle ratio or exact GVWR', () => {
+  const spec = {
+    ...cleanSpec({
+      year: 2026,
+      model: '2500',
+      engine: '6.4L HEMI V8',
+      drive: '4x4',
+      cab: 'Crew',
+      bed: `8'`,
+      rearWheels: 'SRW',
+    }),
+    gvwrClassMin: 9001,
+    gvwrClassMax: 10000,
+  };
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.equal(towSummary.isRange, true);
+  assert.equal(towSummary.min, 14720);
+  assert.equal(towSummary.max, 16930);
+  assert.match(towSummary.note, /door sticker or with your dealer/i);
+
+  assert.equal(payloadSummary.isRange, true);
+  assert.equal(payloadSummary.min, 3020);
+  assert.equal(payloadSummary.max, 3110);
+});
+
+test('buildVinCapacitySummary stays exact when the VIN result includes axle ratio and GVWR', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '2500',
+    engine: '6.4L HEMI V8',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `8'`,
+    rearWheels: 'SRW',
+    axleRatio: '4.10',
+    gvwr: 10000,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.equal(towSummary.isRange, false);
+  assert.equal(towSummary.min, 16920);
+  assert.equal(towSummary.max, 16920);
+  assert.equal(payloadSummary.isRange, false);
+  assert.equal(payloadSummary.min, 3110);
+  assert.equal(payloadSummary.max, 3110);
 });
 
 test('findMatches uses 2025 light-duty chart rows when the sticker is a 2025 truck', () => {

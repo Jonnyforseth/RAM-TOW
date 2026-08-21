@@ -222,6 +222,21 @@ function detectDecodedGvwr(value) {
   return matches[0];
 }
 
+function detectDecodedGvwrBounds(value) {
+  const matches = [...String(value || '').matchAll(/(\d{1,2},\d{3})/g)]
+    .map((match) => Number(match[1].replace(/,/g, '')))
+    .filter(Number.isFinite);
+
+  if (matches.length < 2) {
+    return null;
+  }
+
+  return {
+    min: Math.min(...matches),
+    max: Math.max(...matches),
+  };
+}
+
 function deriveEngineFromDecoded(decoded = {}) {
   const trimText = `${decoded.Trim || ''} ${decoded.Trim2 || ''} ${decoded.Series || ''} ${decoded.Series2 || ''}`.trim();
   const engineText = `${decoded.EngineModel || ''} ${decoded.EngineConfiguration || ''}`.trim();
@@ -270,6 +285,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const cab = detectCab(stickerText, decoded);
   const trim = detectTrim(stickerText, decoded);
   const stickerAvailable = hasUsableStickerText(stickerText);
+  const decodedGvwrBounds = detectDecodedGvwrBounds(decoded.GVWR) || detectDecodedGvwrBounds(decoded.GVWR_to);
   const spec = cleanSpec({
     vin,
     year,
@@ -289,6 +305,8 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     year,
     model,
     trim,
+    gvwrClassMin: decodedGvwrBounds?.min || null,
+    gvwrClassMax: decodedGvwrBounds?.max || null,
     stickerAvailable,
     stickerTitle: stickerText.match(/(?:A\s+)?20\d{2}\s+MODEL YEAR\s+([\s\S]+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   };
@@ -319,4 +337,5 @@ module.exports = {
   hasUsableStickerText,
   lookupVin,
   resolveLookupYear,
+  detectDecodedGvwrBounds,
 };

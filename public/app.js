@@ -130,6 +130,16 @@ function formatCapacity(value) {
   return value == null ? '-' : `${formatNumber(value)} lb`;
 }
 
+function formatCapacityRange(min, max) {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return '-';
+  }
+  if (min === max) {
+    return formatCapacity(min);
+  }
+  return `${formatNumber(min)}-${formatNumber(max)} lb`;
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -165,21 +175,29 @@ function renderDetectedSpec(spec) {
   }
 }
 
-function renderPrimaryMatch(match, capacityNode, detailNode, kind) {
+function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, detectedSpec) {
   if (!match) {
     capacityNode.textContent = 'No clear match';
     detailNode.textContent = 'Try another VIN or verify the sticker details.';
     return;
   }
 
-  capacityNode.textContent = formatCapacity(kind === 'tow' ? match.maxTow : match.maxPayload);
+  const showRange = summary?.isRange && Number.isFinite(summary?.min) && Number.isFinite(summary?.max);
+  capacityNode.textContent = showRange
+    ? formatCapacityRange(summary.min, summary.max).toUpperCase()
+    : formatCapacity(kind === 'tow' ? match.maxTow : match.maxPayload).toUpperCase();
+
+  const canShowAxle = match.axleRatio && (!showRange || detectedSpec?.axleRatio);
+  const canShowGvwr = match.gvwr && (!showRange || detectedSpec?.gvwr);
+  const canShowGcwr = match.gcwr && !showRange;
   const lines = [
     `${match.model} ${match.cab} ${match.bed} ${match.drive}`,
     match.engine,
-    match.axleRatio ? `Axle ${match.axleRatio}` : null,
-    match.gvwr ? `GVWR ${formatNumber(match.gvwr)} lb` : null,
-    match.gcwr ? `GCWR ${formatNumber(match.gcwr)} lb` : null,
+    canShowAxle ? `Axle ${match.axleRatio}` : null,
+    canShowGvwr ? `GVWR ${formatNumber(match.gvwr)} lb` : null,
+    canShowGcwr ? `GCWR ${formatNumber(match.gcwr)} lb` : null,
     match.trim || match.trimHint ? `Trim hint: ${match.trim || match.trimHint}` : null,
+    showRange ? `<span class="metric-note">${escapeHtml(summary.note || 'Confirm the exact axle ratio and door-sticker GVWR before towing.')}</span>` : null,
   ].filter(Boolean);
   detailNode.innerHTML = lines.join('<br>');
 }
@@ -209,8 +227,8 @@ function renderInventoryLink(row) {
 function renderVinResponse(response) {
   stickerLink.href = response.pdfUrl;
   renderDetectedSpec(response.detectedSpec);
-  renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow');
-  renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload');
+  renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow', response.towSummary, response.detectedSpec);
+  renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload', response.payloadSummary, response.detectedSpec);
   vinResults.classList.remove('hidden');
 
   if (response.detectedSpec?.stickerAvailable === false) {

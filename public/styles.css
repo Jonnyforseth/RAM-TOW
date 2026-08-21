@@ -443,6 +443,32 @@ body::before {
   line-height: 1.6;
 }
 
+.metric-note {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.vin-disclaimer {
+  padding: 14px 16px;
+  border: 1px solid rgba(176, 58, 34, 0.18);
+  border-left: 4px solid var(--red);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 247, 238, 0.96), rgba(255, 252, 246, 0.98));
+}
+
+.vin-disclaimer strong {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+
+.vin-disclaimer p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
 .alternate-grid {
   display: grid;
   gap: 12px;
