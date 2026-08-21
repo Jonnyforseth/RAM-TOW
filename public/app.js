@@ -8,6 +8,11 @@ const towCapacity = document.querySelector('#tow-capacity');
 const towDetail = document.querySelector('#tow-detail');
 const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
+const vinScanButton = document.querySelector('#vin-scan-button');
+const scannerModal = document.querySelector('#scanner-modal');
+const scannerVideo = document.querySelector('#scanner-video');
+const scannerStatus = document.querySelector('#scanner-status');
+const scannerCloseButton = document.querySelector('#scanner-close');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -20,6 +25,13 @@ const reverseInputs = [
   hitchTypeInput,
   document.querySelector('#model-preference'),
 ];
+
+const VIN_BARCODE_FORMATS = ['code_39', 'code_128', 'pdf417'];
+let scannerStream = null;
+let scannerDetector = null;
+let scannerLoopHandle = 0;
+let scannerActive = false;
+let scannerBusy = false;
 
 function renderInsight(item) {
   return `
@@ -151,6 +163,186 @@ function renderVinResponse(response) {
   vinResults.classList.remove('hidden');
 }
 
+function normalizeVinCandidate(value) {
+  const cleaned = String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+  const match = cleaned.match(/[A-HJ-NPR-Z0-9]{17}/);
+  return match ? match[0] : null;
+}
+
+function setScannerStatus(message, isError = false) {
+  if (!scannerStatus) {
+    return;
+  }
+  scannerStatus.textContent = message;
+  scannerStatus.style.color = isError ? '#f3b0a6' : 'rgba(246, 240, 231, 0.86)';
+}
+
+function cancelScannerLoop() {
+  if (scannerLoopHandle) {
+    cancelAnimationFrame(scannerLoopHandle);
+    scannerLoopHandle = 0;
+  }
+}
+
+function stopScannerStream() {
+  if (!scannerStream) {
+    return;
+  }
+  for (const track of scannerStream.getTracks()) {
+    track.stop();
+  }
+  scannerStream = null;
+}
+
+function closeScannerModal() {
+  scannerActive = false;
+  scannerBusy = false;
+  cancelScannerLoop();
+  stopScannerStream();
+  if (scannerVideo) {
+    scannerVideo.pause();
+    scannerVideo.srcObject = null;
+  }
+  if (scannerModal) {
+    scannerModal.classList.add('hidden');
+    scannerModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function readVinBarcodeDetectorSupport() {
+  if (!('BarcodeDetector' in window)) {
+    return false;
+  }
+
+  if (typeof window.BarcodeDetector.getSupportedFormats !== 'function') {
+    return true;
+  }
+
+  try {
+    const formats = await window.BarcodeDetector.getSupportedFormats();
+    return VIN_BARCODE_FORMATS.some((format) => formats.includes(format));
+  } catch (_error) {
+    return true;
+  }
+}
+
+async function ensureScannerDetector() {
+  if (scannerDetector) {
+    return scannerDetector;
+  }
+
+  if (!('BarcodeDetector' in window)) {
+    throw new Error('This browser does not support camera barcode scanning yet.');
+  }
+
+  let formats = VIN_BARCODE_FORMATS;
+  if (typeof window.BarcodeDetector.getSupportedFormats === 'function') {
+    const supported = await window.BarcodeDetector.getSupportedFormats();
+    const filtered = VIN_BARCODE_FORMATS.filter((format) => supported.includes(format));
+    if (!filtered.length) {
+      throw new Error('This phone browser does not expose the VIN barcode formats we need.');
+    }
+    formats = filtered;
+  }
+
+  scannerDetector = new window.BarcodeDetector({ formats });
+  return scannerDetector;
+}
+
+async function processDetectedVin(vin) {
+  closeScannerModal();
+  vinInput.value = vin;
+  showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
+  vinResults.classList.add('hidden');
+
+  try {
+    const response = await fetchJson(`/api/lookup-vin/${encodeURIComponent(vin)}`);
+    hideStatus(vinStatus);
+    renderVinResponse(response);
+  } catch (error) {
+    showStatus(vinStatus, error.message, true);
+  }
+}
+
+async function scanFrame() {
+  if (!scannerActive || !scannerVideo) {
+    return;
+  }
+
+  if (scannerBusy || scannerVideo.readyState < 2) {
+    scannerLoopHandle = requestAnimationFrame(scanFrame);
+    return;
+  }
+
+  scannerBusy = true;
+  try {
+    const detector = await ensureScannerDetector();
+    const barcodes = await detector.detect(scannerVideo);
+    for (const barcode of barcodes) {
+      const vin = normalizeVinCandidate(barcode?.rawValue || barcode?.displayValue || '');
+      if (vin) {
+        await processDetectedVin(vin);
+        return;
+      }
+    }
+  } catch (error) {
+    setScannerStatus(error.message || 'VIN scan failed. Try typing the VIN instead.', true);
+  } finally {
+    scannerBusy = false;
+  }
+
+  if (scannerActive) {
+    scannerLoopHandle = requestAnimationFrame(scanFrame);
+  }
+}
+
+async function openScannerModal() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showStatus(vinStatus, 'This device does not allow live camera access here. Type the VIN manually.', true);
+    return;
+  }
+
+  try {
+    await ensureScannerDetector();
+  } catch (error) {
+    showStatus(vinStatus, error.message || 'VIN barcode scanning is not available on this browser.', true);
+    return;
+  }
+
+  hideStatus(vinStatus);
+  if (scannerModal) {
+    scannerModal.classList.remove('hidden');
+    scannerModal.setAttribute('aria-hidden', 'false');
+  }
+  setScannerStatus('Point the camera at the VIN barcode and hold steady.');
+
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    });
+
+    if (!scannerVideo) {
+      throw new Error('Scanner video surface is missing.');
+    }
+
+    scannerVideo.srcObject = scannerStream;
+    await scannerVideo.play();
+    scannerActive = true;
+    cancelScannerLoop();
+    scannerLoopHandle = requestAnimationFrame(scanFrame);
+  } catch (error) {
+    closeScannerModal();
+    showStatus(vinStatus, error.message || 'Could not open the camera. Type the VIN manually.', true);
+  }
+}
+
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
   const raw = await response.text();
@@ -194,6 +386,26 @@ vinForm.addEventListener('submit', async (event) => {
     showStatus(vinStatus, error.message, true);
   }
 });
+
+if (vinScanButton) {
+  vinScanButton.addEventListener('click', () => {
+    openScannerModal();
+  });
+}
+
+if (scannerCloseButton) {
+  scannerCloseButton.addEventListener('click', () => {
+    closeScannerModal();
+  });
+}
+
+if (scannerModal) {
+  scannerModal.addEventListener('click', (event) => {
+    if (event.target === scannerModal) {
+      closeScannerModal();
+    }
+  });
+}
 
 reverseForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -272,3 +484,24 @@ window.addEventListener('pageshow', () => {
   resetReverseResults();
   syncHitchTypeUi();
 });
+
+window.addEventListener('beforeunload', () => {
+  closeScannerModal();
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && scannerActive) {
+    closeScannerModal();
+  }
+});
+
+(async () => {
+  if (!vinScanButton) {
+    return;
+  }
+
+  const supported = await readVinBarcodeDetectorSupport();
+  if (supported && navigator.mediaDevices?.getUserMedia) {
+    vinScanButton.classList.remove('hidden');
+  }
+})();
