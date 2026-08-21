@@ -37,6 +37,33 @@ test(`extractDetectedSpec maps HD short-bed decode values to 6'4"`, () => {
   assert.equal(detectedSpec.gvwr, 11040);
 });
 
+test(`extractDetectedSpec recognizes REG CAB LONG BOX as Regular 8'`, () => {
+  const stickerText = `
+    A
+    2026 MODEL YEAR
+
+    RAM 2500 TRADESMAN REG CAB 4X4 LONG BOX
+
+    THIS VEHICLE
+    Engine: 6.7L I6 Cummins HO Turbo Diesel Engine
+    3.42 Axle Ratio
+    GVW Rating - 10,000 Pounds
+  `;
+
+  const detectedSpec = extractDetectedSpec('3C6MR5AL4TG321656', stickerText, {
+    Trim: 'Tradesman',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    BodyClass: 'Pickup',
+    BedType: '',
+  });
+
+  assert.equal(detectedSpec.model, '2500');
+  assert.equal(detectedSpec.cab, 'Regular');
+  assert.equal(detectedSpec.bed, `8'`);
+  assert.equal(detectedSpec.axleRatio, '3.42');
+  assert.equal(detectedSpec.gvwr, 10000);
+});
+
 test('findMatches uses GVWR to choose the correct HD tow row', () => {
   const spec = cleanSpec({
     model: '2500',
@@ -55,4 +82,26 @@ test('findMatches uses GVWR to choose the correct HD tow row', () => {
   assert.equal(matches.towMatches[0].maxTow, 18230);
   assert.equal(matches.payloadMatches[0].gvwr, 11040);
   assert.equal(matches.payloadMatches[0].maxPayload, 3300);
+});
+
+test('findMatches selects the Regular Cab long-box HD tow row for reg cab stickers', () => {
+  const spec = cleanSpec({
+    model: '2500',
+    engine: '6.7L Cummins HO',
+    drive: '4x4',
+    cab: 'Regular',
+    bed: `8'`,
+    rearWheels: 'SRW',
+    axleRatio: '3.42',
+    gvwr: 10000,
+  });
+
+  const matches = findMatches(spec);
+
+  assert.equal(matches.towMatches[0].cab, 'Regular');
+  assert.equal(matches.towMatches[0].bed, `8'`);
+  assert.equal(matches.towMatches[0].maxTow, 19900);
+  assert.equal(matches.payloadMatches[0].cab, 'Regular');
+  assert.equal(matches.payloadMatches[0].bed, `8'`);
+  assert.equal(matches.payloadMatches[0].maxPayload, 2550);
 });

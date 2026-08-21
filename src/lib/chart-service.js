@@ -44,6 +44,7 @@ function normalizeDrive(value) {
 
 function normalizeCab(value) {
   const text = normalize(value);
+  const raw = String(value || '').toLowerCase();
   if (!text) {
     return null;
   }
@@ -52,6 +53,9 @@ function normalizeCab(value) {
   }
   if (text.includes('quad')) {
     return 'Quad';
+  }
+  if (/\breg(ular)?\s+cab\b/i.test(raw) || /\bstandard\s+cab\b/i.test(raw)) {
+    return 'Regular';
   }
   if (text.includes('regular')) {
     return 'Regular';
@@ -68,7 +72,7 @@ function normalizeBed(value) {
   if (!raw.trim()) {
     return null;
   }
-  if (/8\s*'\s*(box|bed)/i.test(raw) || /\b8\s*ft\.?\s*(box|bed)/i.test(raw) || /long box/i.test(raw) || /long bed/i.test(raw)) {
+  if (/^8\s*'?\s*$/i.test(raw) || /8\s*'\s*(box|bed)?/i.test(raw) || /\b8\s*ft\.?\s*(box|bed)?/i.test(raw) || /long box/i.test(raw) || /long bed/i.test(raw)) {
     return `8'`;
   }
   if (/5\s*'\s*7\s*(box|bed)?/i.test(raw) || /\b5\s*ft\.?\s*7\b/i.test(raw) || /\bshort box\b/i.test(raw) || /\bshort bed\b/i.test(raw)) {
