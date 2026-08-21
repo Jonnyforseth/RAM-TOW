@@ -36,6 +36,16 @@ app.get('/api/health', async (_req, res) => {
 app.get('/api/lookup-vin/:vin', async (req, res) => {
   try {
     const vinResult = await lookupVin(req.params.vin);
+
+    if (vinResult.detectedSpec?.stickerAvailable === false) {
+      res.status(503).json({
+        ok: false,
+        errorCode: 'STICKER_OFFLINE',
+        error: 'Window sticker is offline for this truck right now. Try again.',
+      });
+      return;
+    }
+
     const chartYear = vinResult.detectedSpec.year;
     const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
     const rawHints = await findRawChartHints(vinResult.detectedSpec, { year: chartYear });

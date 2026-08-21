@@ -104,6 +104,24 @@
     </div>
 
     <input id="vin-scan-input" type="file" accept="image/*" capture="environment" hidden>
+    <div id="vin-scan-modal" class="scanner-modal hidden" aria-hidden="true">
+      <div class="scanner-panel">
+        <div class="scanner-head">
+          <h3>Read VIN Photo</h3>
+          <button id="vin-scan-close" type="button" class="scanner-close">Close</button>
+        </div>
+        <p class="scanner-copy">Snap the white door-jamb sticker, then drag the frame so it covers the sticker. We will try the barcode first, then the printed VIN line.</p>
+        <div class="scanner-stage">
+          <img id="vin-crop-image" class="scanner-image" alt="VIN sticker preview">
+        </div>
+        <div id="vin-scan-modal-status" class="scanner-status hidden"></div>
+        <div class="scanner-actions">
+          <button id="vin-scan-read" type="button" class="button button-secondary">Read VIN</button>
+        </div>
+      </div>
+    </div>
+    <script src="/vendor/zxing-browser.min.js"></script>
+    <script src="/vendor/cropper.min.js"></script>
     <script src="/vendor/tesseract.min.js"></script>
     <script src="/app.js"></script>
   </body>

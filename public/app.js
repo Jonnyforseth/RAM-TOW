@@ -10,6 +10,11 @@ const payloadCapacity = document.querySelector('#payload-capacity');
 const payloadDetail = document.querySelector('#payload-detail');
 const vinScanButton = document.querySelector('#vin-scan-button');
 const vinScanInput = document.querySelector('#vin-scan-input');
+const vinScanModal = document.querySelector('#vin-scan-modal');
+const vinScanCloseButton = document.querySelector('#vin-scan-close');
+const vinScanReadButton = document.querySelector('#vin-scan-read');
+const vinScanModalStatus = document.querySelector('#vin-scan-modal-status');
+const vinCropImage = document.querySelector('#vin-crop-image');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -72,6 +77,8 @@ const VIN_OCR_SUBSTITUTIONS = {
 
 let vinOcrWorker = null;
 let vinOcrWorkerReady = null;
+let vinCropper = null;
+let vinScanObjectUrl = null;
 
 function renderInsight(item) {
   return `
@@ -201,6 +208,13 @@ function renderVinResponse(response) {
   renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow');
   renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload');
   vinResults.classList.remove('hidden');
+
+  if (response.detectedSpec?.stickerAvailable === false) {
+    showStatus(
+      vinStatus,
+      'Chrysler did not return a window sticker for this VIN. This result uses the VIN decode for cab, engine, drive, and bed, then falls back to the safest matching chart row until axle ratio and exact sticker data can be confirmed.'
+    );
+  }
 }
 
 function normalizeManualVin(value) {
@@ -366,52 +380,175 @@ function clampRegion(region, width, height) {
   };
 }
 
-async function loadImageFromFile(file) {
-  return await new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Could not open that photo. Try taking another picture of the VIN sticker.'));
-    };
-    image.src = objectUrl;
+function revokeVinScanObjectUrl() {
+  if (!vinScanObjectUrl) {
+    return;
+  }
+
+  URL.revokeObjectURL(vinScanObjectUrl);
+  vinScanObjectUrl = null;
+}
+
+function getCropperConstructor() {
+  return window.Cropper?.default || window.Cropper || null;
+}
+
+function destroyVinCropper() {
+  if (!vinCropper) {
+    return;
+  }
+
+  try {
+    vinCropper.destroy?.();
+  } catch (_error) {
+    // Ignore cropper teardown errors.
+  }
+
+  vinCropper = null;
+}
+
+function closeVinScanModal() {
+  destroyVinCropper();
+  hideStatus(vinScanModalStatus);
+  vinScanModal?.classList.add('hidden');
+  vinScanModal?.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  if (vinCropImage) {
+    vinCropImage.removeAttribute('src');
+  }
+  if (vinScanReadButton) {
+    vinScanReadButton.disabled = false;
+  }
+  if (vinScanInput) {
+    vinScanInput.value = '';
+  }
+  revokeVinScanObjectUrl();
+}
+
+function seedVinCropSelection() {
+  const selection = vinCropper?.getCropperSelection?.();
+  const container = vinCropper?.container;
+  if (!selection?.$change || !container) {
+    return;
+  }
+
+  const containerWidth = container.clientWidth || vinCropImage?.clientWidth || 0;
+  const containerHeight = container.clientHeight || vinCropImage?.clientHeight || 0;
+
+  if (!containerWidth || !containerHeight) {
+    return;
+  }
+
+  const width = containerWidth * 0.86;
+  const height = containerHeight * 0.54;
+  const left = (containerWidth - width) / 2;
+  const top = containerHeight * 0.26;
+  selection.$change(left, top, width, height);
+}
+
+async function openVinCropModal(file) {
+  if (!file) {
+    return;
+  }
+
+  const CropperCtor = getCropperConstructor();
+  if (!CropperCtor) {
+    showStatus(vinStatus, 'The VIN photo cropper did not load correctly on this device.', true);
+    return;
+  }
+
+  if (!vinCropImage || !vinScanModal) {
+    showStatus(vinStatus, 'The VIN photo tool is not available in this page build.', true);
+    return;
+  }
+
+  destroyVinCropper();
+  revokeVinScanObjectUrl();
+  hideStatus(vinScanModalStatus);
+
+  showStatus(vinStatus, 'Photo loaded. Frame the white sticker, then tap Read VIN.');
+  vinResults.classList.add('hidden');
+  vinScanModal.classList.remove('hidden');
+  vinScanModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+
+  vinScanObjectUrl = URL.createObjectURL(file);
+  const loadPromise = new Promise((resolve, reject) => {
+    vinCropImage.onload = () => resolve();
+    vinCropImage.onerror = () => reject(new Error('Could not open that photo. Try taking another picture of the door sticker.'));
   });
+
+  vinCropImage.src = vinScanObjectUrl;
+
+  try {
+    await loadPromise;
+    vinCropper = new CropperCtor(vinCropImage, {
+      container: vinCropImage.parentElement,
+      background: false,
+      guides: true,
+      center: true,
+      modal: true,
+      movable: true,
+      zoomable: true,
+      rotatable: false,
+      scalable: false,
+      dragMode: 'move',
+      autoCropArea: 0.88,
+    });
+
+    window.setTimeout(seedVinCropSelection, 60);
+    showStatus(vinScanModalStatus, 'Drag the frame around the white sticker. We will read the VIN automatically from that crop.');
+  } catch (error) {
+    closeVinScanModal();
+    showStatus(vinStatus, error.message || 'Could not open that photo.', true);
+  }
 }
 
-function buildPhotoCanvas(image) {
-  const sourceWidth = image.naturalWidth || image.width;
-  const sourceHeight = image.naturalHeight || image.height;
-  const maxDimension = 2200;
-  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
-  const canvas = createCanvas(sourceWidth * scale, sourceHeight * scale);
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas;
-}
-
-function getPhotoOcrRegions(frameCanvas) {
+function getVinOcrRegions(frameCanvas) {
   const width = frameCanvas.width;
   const height = frameCanvas.height;
 
   return [
     clampRegion({ left: 0, top: 0, width, height }, width, height),
-    clampRegion({ left: width * 0.04, top: height * 0.2, width: width * 0.92, height: height * 0.62 }, width, height),
-    clampRegion({ left: width * 0.08, top: height * 0.32, width: width * 0.84, height: height * 0.42 }, width, height),
-    clampRegion({ left: width * 0.1, top: height * 0.42, width: width * 0.8, height: height * 0.22 }, width, height),
-    clampRegion({ left: width * 0.08, top: height * 0.48, width: width * 0.84, height: height * 0.16 }, width, height),
+    clampRegion({ left: width * 0.04, top: height * 0.08, width: width * 0.92, height: height * 0.5 }, width, height),
+    clampRegion({ left: width * 0.06, top: height * 0.12, width: width * 0.88, height: height * 0.28 }, width, height),
+    clampRegion({ left: width * 0.06, top: height * 0.18, width: width * 0.88, height: height * 0.18 }, width, height),
+    clampRegion({ left: width * 0.08, top: height * 0.18, width: width * 0.84, height: height * 0.12 }, width, height),
   ];
 }
 
-function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
-  const scale = 2.6;
+function getVinBarcodeRegions(frameCanvas) {
+  const width = frameCanvas.width;
+  const height = frameCanvas.height;
+
+  return [
+    clampRegion({ left: 0, top: 0, width, height }, width, height),
+    clampRegion({ left: width * 0.04, top: height * 0.46, width: width * 0.92, height: height * 0.42 }, width, height),
+    clampRegion({ left: width * 0.08, top: height * 0.56, width: width * 0.84, height: height * 0.28 }, width, height),
+  ];
+}
+
+function buildPreparedCanvas(frameCanvas, region, mode = 'threshold', scale = 2.8) {
   const canvas = createCanvas(region.width * scale, region.height * scale);
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context.imageSmoothingEnabled = false;
-  context.filter = 'grayscale(1) contrast(1.38) brightness(1.06)';
+
+  if (mode === 'raw') {
+    context.drawImage(
+      frameCanvas,
+      region.left,
+      region.top,
+      region.width,
+      region.height,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+    return canvas;
+  }
+
+  context.filter = 'grayscale(1) contrast(1.45) brightness(1.08)';
   context.drawImage(
     frameCanvas,
     region.left,
@@ -445,20 +582,20 @@ function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
 
   const range = Math.max(1, max - min);
   const average = total / Math.max(1, samples);
-  const threshold = Math.max(96, Math.min(204, average - 8));
+  const threshold = Math.max(94, Math.min(210, average - 6));
 
   for (let index = 0; index < data.length; index += 4) {
     const normalized = ((data[index] - min) / range) * 255;
     let output = normalized;
 
     if (mode === 'grayscale') {
-      output = Math.max(0, Math.min(255, (normalized - 128) * 1.15 + 128));
+      output = Math.max(0, Math.min(255, (normalized - 128) * 1.18 + 128));
     } else if (mode === 'threshold') {
       output = normalized > threshold ? 255 : 0;
     } else if (mode === 'invert-threshold') {
       output = normalized > threshold ? 0 : 255;
     } else if (mode === 'contrast') {
-      output = normalized > 220 ? 255 : Math.max(0, Math.min(255, normalized * 1.08));
+      output = normalized > 220 ? 255 : Math.max(0, Math.min(255, normalized * 1.12));
     }
 
     data[index] = output;
@@ -468,6 +605,10 @@ function buildOcrCanvas(frameCanvas, region, mode = 'threshold') {
 
   context.putImageData(imageData, 0, 0);
   return canvas;
+}
+
+function extractVinFromDecodedText(value) {
+  return normalizeManualVin(value) || extractVinFromOcrText(value);
 }
 
 async function ensureVinOcrWorker() {
@@ -520,23 +661,89 @@ async function terminateVinOcrWorker() {
   vinOcrWorker = null;
 }
 
-async function readVinFromCanvas(frameCanvas) {
-  const worker = await ensureVinOcrWorker();
-  const regions = getPhotoOcrRegions(frameCanvas);
-  const modes = ['grayscale', 'threshold', 'contrast', 'invert-threshold'];
+async function readVinFromBarcodeCanvas(frameCanvas) {
+  const zxing = window.ZXingBrowser;
+  if (!zxing?.BrowserMultiFormatReader) {
+    return null;
+  }
+
+  const reader = new zxing.BrowserMultiFormatReader();
+  const formats = [
+    zxing.BarcodeFormat?.CODE_39,
+    zxing.BarcodeFormat?.CODE_128,
+    zxing.BarcodeFormat?.PDF_417,
+  ].filter(Boolean);
+
+  if (formats.length) {
+    reader.possibleFormats = formats;
+  }
+
+  const regions = getVinBarcodeRegions(frameCanvas);
+  const modes = ['raw', 'contrast', 'threshold'];
 
   for (const region of regions) {
     for (const mode of modes) {
-      const preparedCanvas = buildOcrCanvas(frameCanvas, region, mode);
-      const { data } = await worker.recognize(preparedCanvas);
-      const vin = extractVinFromOcrText(data?.text || '');
-      if (vin) {
-        return vin;
+      const preparedCanvas = buildPreparedCanvas(frameCanvas, region, mode, 2.4);
+
+      try {
+        const result = await reader.decodeFromCanvas(preparedCanvas);
+        const text = result?.getText?.() || result?.text || '';
+        const vin = extractVinFromDecodedText(text);
+        if (vin) {
+          return vin;
+        }
+      } catch (_error) {
+        // Keep trying other regions and modes.
       }
     }
   }
 
-  throw new Error('Could not read a clean VIN from that photo. Take a closer picture of the white sticker so the VIN line is readable and try again.');
+  return null;
+}
+
+async function readVinFromCanvas(frameCanvas) {
+  const worker = await ensureVinOcrWorker();
+  const regions = getVinOcrRegions(frameCanvas);
+  const passes = [
+    { psm: '7', modes: ['grayscale', 'threshold', 'contrast'] },
+    { psm: '6', modes: ['grayscale', 'threshold', 'contrast', 'invert-threshold'] },
+  ];
+
+  for (const pass of passes) {
+    await worker.setParameters({
+      tessedit_char_whitelist: VIN_OCR_WHITELIST,
+      tessedit_pageseg_mode: pass.psm,
+      preserve_interword_spaces: '0',
+      user_defined_dpi: '300',
+    });
+
+    for (const region of regions) {
+      for (const mode of pass.modes) {
+        const preparedCanvas = buildPreparedCanvas(frameCanvas, region, mode);
+        const { data } = await worker.recognize(preparedCanvas);
+        const vin = extractVinFromOcrText(data?.text || '');
+        if (vin) {
+          return vin;
+        }
+      }
+    }
+  }
+
+  throw new Error('Could not read a clean VIN from that crop. Try a tighter crop around the white sticker or take a brighter photo.');
+}
+
+async function buildVinSelectionCanvas() {
+  const selection = vinCropper?.getCropperSelection?.();
+  if (!selection?.$toCanvas) {
+    throw new Error('The photo cropper is not ready yet. Re-open the photo and try again.');
+  }
+
+  const canvas = await selection.$toCanvas({ width: 1800 });
+  if (!canvas) {
+    throw new Error('Could not prepare that photo crop. Try another photo.');
+  }
+
+  return canvas;
 }
 
 async function processDetectedVin(vin) {
@@ -553,37 +760,42 @@ async function processDetectedVin(vin) {
   }
 }
 
-async function processVinPhoto(file) {
-  if (!file) {
-    return;
-  }
-
-  showStatus(vinStatus, 'Reading VIN from photo...');
-  vinResults.classList.add('hidden');
-
-  try {
-    const image = await loadImageFromFile(file);
-    const canvas = buildPhotoCanvas(image);
-    const vin = await readVinFromCanvas(canvas);
-    await processDetectedVin(vin);
-  } catch (error) {
-    showStatus(vinStatus, error.message || 'Could not read the VIN from that photo.', true);
-  } finally {
-    if (vinScanInput) {
-      vinScanInput.value = '';
-    }
-  }
-}
-
 function triggerVinPhotoCapture() {
   if (!vinScanInput) {
     showStatus(vinStatus, 'This device does not support VIN photo capture here. Type the VIN manually.', true);
     return;
   }
 
-  showStatus(vinStatus, 'Take a clear photo of the white door-jamb sticker. Make sure the VIN line is visible.');
+  showStatus(vinStatus, 'Take a clear photo of the white door-jamb sticker. We will let you crop the sticker before reading the VIN.');
   vinScanInput.value = '';
   vinScanInput.click();
+}
+
+async function handleVinScanRead() {
+  if (!vinCropper) {
+    showStatus(vinScanModalStatus, 'Open a VIN photo first.', true);
+    return;
+  }
+
+  if (vinScanReadButton) {
+    vinScanReadButton.disabled = true;
+  }
+
+  showStatus(vinScanModalStatus, 'Reading the sticker. Trying barcode first, then VIN text...');
+
+  try {
+    const canvas = await buildVinSelectionCanvas();
+    const barcodeVin = await readVinFromBarcodeCanvas(canvas);
+    const vin = barcodeVin || await readVinFromCanvas(canvas);
+    closeVinScanModal();
+    await processDetectedVin(vin);
+  } catch (error) {
+    showStatus(vinScanModalStatus, error.message || 'Could not read the VIN from that photo.', true);
+  } finally {
+    if (vinScanReadButton) {
+      vinScanReadButton.disabled = false;
+    }
+  }
 }
 
 async function fetchJson(url, options) {
@@ -637,11 +849,23 @@ if (vinScanButton) {
   });
 }
 
+if (vinScanCloseButton) {
+  vinScanCloseButton.addEventListener('click', () => {
+    closeVinScanModal();
+  });
+}
+
+if (vinScanReadButton) {
+  vinScanReadButton.addEventListener('click', () => {
+    void handleVinScanRead();
+  });
+}
+
 if (vinScanInput) {
   vinScanInput.addEventListener('change', (event) => {
     const file = event.target.files?.[0];
     if (file) {
-      void processVinPhoto(file);
+      void openVinCropModal(file);
     }
   });
 }
@@ -725,5 +949,6 @@ window.addEventListener('pageshow', () => {
 });
 
 window.addEventListener('beforeunload', () => {
+  closeVinScanModal();
   void terminateVinOcrWorker();
 });

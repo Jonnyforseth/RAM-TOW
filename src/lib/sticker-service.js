@@ -15,6 +15,7 @@ const VIN_MODEL_YEAR_MAP = {
   S: 2025,
   T: 2026,
 };
+const STICKER_UNAVAILABLE_PATTERN = /unable to retrieve a window sticker for this vin/i;
 
 function assertVin(vin) {
   const trimmed = String(vin || '').trim().toUpperCase();
@@ -109,6 +110,14 @@ function detectModel(vin, stickerText) {
   return null;
 }
 
+function hasUsableStickerText(stickerText) {
+  const text = String(stickerText || '').trim();
+  if (!text) {
+    return false;
+  }
+  return !STICKER_UNAVAILABLE_PATTERN.test(text);
+}
+
 function detectTrim(stickerText, decoded) {
   const raw = decoded.Trim || '';
   if (raw) {
@@ -139,7 +148,14 @@ function detectGVWR(stickerText) {
 }
 
 function detectCab(stickerText, decoded) {
-  return normalizeCab(stickerText) || normalizeCab(decoded.CabType) || normalizeCab(decoded.BodyClass);
+  return (
+    normalizeCab(stickerText) ||
+    normalizeCab(decoded.CabType) ||
+    normalizeCab(decoded.BodyCabType) ||
+    normalizeCab(decoded.Series2) ||
+    normalizeCab(decoded.Series) ||
+    normalizeCab(decoded.BodyClass)
+  );
 }
 
 function detectBed(vin, stickerText, decoded, model, cab) {
@@ -194,9 +210,58 @@ function detectRearWheels(vin, stickerText, model) {
   return null;
 }
 
-function detectEngine(stickerText) {
-  const engineLine = stickerText.match(/Engine:\s*(.+)/i)?.[1] || stickerText;
-  return normalizeEngine(engineLine);
+function detectDecodedGvwr(value) {
+  const matches = [...String(value || '').matchAll(/(\d{1,2},\d{3})/g)]
+    .map((match) => Number(match[1].replace(/,/g, '')))
+    .filter(Number.isFinite);
+
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  return matches[0];
+}
+
+function deriveEngineFromDecoded(decoded = {}) {
+  const trimText = `${decoded.Trim || ''} ${decoded.Trim2 || ''} ${decoded.Series || ''} ${decoded.Series2 || ''}`.trim();
+  const engineText = `${decoded.EngineModel || ''} ${decoded.EngineConfiguration || ''}`.trim();
+  const displacementSource = decoded.DisplacementL || decoded.DisplacementCC || null;
+  const displacement = Number(displacementSource);
+  const cylinders = Number(decoded.EngineCylinders || null);
+  const fuelText = String(decoded.FuelTypePrimary || '').toLowerCase();
+
+  const normalizedDirect = normalizeEngine(engineText);
+  if (normalizedDirect) {
+    return normalizedDirect;
+  }
+
+  if (Number.isFinite(displacement)) {
+    if (Math.abs(displacement - 5.7) < 0.12 && cylinders === 8) {
+      return '5.7L HEMI V8 eTorque';
+    }
+    if (Math.abs(displacement - 3.6) < 0.12 && cylinders === 6) {
+      return '3.6L Pentastar V6 eTorque';
+    }
+    if (Math.abs(displacement - 3.0) < 0.12 && cylinders === 6) {
+      if (/rho|limited|high output|h\/?o/i.test(`${engineText} ${trimText}`)) {
+        return '3.0L Hurricane HO';
+      }
+      return '3.0L Hurricane SO';
+    }
+    if (Math.abs(displacement - 6.4) < 0.12 && cylinders === 8) {
+      return '6.4L HEMI V8';
+    }
+    if (Math.abs(displacement - 6.7) < 0.12 && fuelText.includes('diesel')) {
+      return '6.7L Cummins HO';
+    }
+  }
+
+  return normalizeEngine(trimText);
+}
+
+function detectEngine(stickerText, decoded) {
+  const engineLine = String(stickerText || '').match(/Engine:\s*(.+)/i)?.[1] || '';
+  return normalizeEngine(engineLine) || normalizeEngine(stickerText) || deriveEngineFromDecoded(decoded);
 }
 
 function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
@@ -204,6 +269,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const model = detectModel(vin, stickerText);
   const cab = detectCab(stickerText, decoded);
   const trim = detectTrim(stickerText, decoded);
+  const stickerAvailable = hasUsableStickerText(stickerText);
   const spec = cleanSpec({
     vin,
     year,
@@ -212,10 +278,10 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     cab,
     bed: detectBed(vin, stickerText, decoded, model, cab),
     rearWheels: detectRearWheels(vin, stickerText, model),
-    engine: detectEngine(stickerText),
+    engine: detectEngine(stickerText, decoded),
     trim,
     axleRatio: detectAxleRatio(stickerText),
-    gvwr: detectGVWR(stickerText),
+    gvwr: detectGVWR(stickerText) || detectDecodedGvwr(decoded.GVWR) || detectDecodedGvwr(decoded.GVWR_to),
   });
 
   return {
@@ -223,6 +289,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     year,
     model,
     trim,
+    stickerAvailable,
     stickerTitle: stickerText.match(/(?:A\s+)?20\d{2}\s+MODEL YEAR\s+([\s\S]+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   };
 }
@@ -249,6 +316,7 @@ module.exports = {
   detectModelYearFromSticker,
   detectModelYearFromVin,
   extractDetectedSpec,
+  hasUsableStickerText,
   lookupVin,
   resolveLookupYear,
 };

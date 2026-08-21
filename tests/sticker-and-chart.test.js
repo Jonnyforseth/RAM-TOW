@@ -90,6 +90,30 @@ test('extractDetectedSpec keeps a 2025 sticker on the 2025 charts', () => {
   assert.equal(detectedSpec.bed, `5'7"`);
 });
 
+test('extractDetectedSpec falls back to decoded 1500 cab and engine when Chrysler has no sticker PDF', () => {
+  const stickerText = 'We are unable to retrieve a window sticker for this VIN at this time.';
+
+  const detectedSpec = extractDetectedSpec('1C6RREFT0TN427745', stickerText, {
+    Trim: 'Big Horn/Lonestar',
+    DriveType: '4x2',
+    BodyClass: 'Pickup',
+    BodyCabType: 'Crew/Super Crew/Crew Max',
+    Series2: 'Crew Cab',
+    BedType: 'Short',
+    DisplacementL: '5.7',
+    EngineCylinders: '8',
+    FuelTypePrimary: 'Gasoline',
+    GVWR: 'Class 2E: 6,001 - 7,000 lb (2,722 - 3,175 kg)',
+  });
+
+  assert.equal(detectedSpec.stickerAvailable, false);
+  assert.equal(detectedSpec.engine, '5.7L HEMI V8 eTorque');
+  assert.equal(detectedSpec.cab, 'Crew');
+  assert.equal(detectedSpec.bed, `5'7"`);
+  assert.equal(detectedSpec.drive, '4x2');
+  assert.equal(detectedSpec.gvwr, null);
+});
+
 test('findMatches uses GVWR to choose the correct HD tow row', () => {
   const spec = cleanSpec({
     model: '2500',
@@ -149,6 +173,28 @@ test('findMatches uses 2025 light-duty chart rows when the sticker is a 2025 tru
 
   assert.equal(matches.towMatches[0].maxTow, 9340);
   assert.equal(matches.payloadMatches[0].maxPayload, 1340);
+});
+
+test('findMatches no longer falls back to a 3.6L Quad when a 1500 sticker is unavailable', () => {
+  const spec = extractDetectedSpec('1C6RREFT0TN427745', 'We are unable to retrieve a window sticker for this VIN at this time.', {
+    Trim: 'Big Horn/Lonestar',
+    DriveType: '4x2',
+    BodyClass: 'Pickup',
+    BodyCabType: 'Crew/Super Crew/Crew Max',
+    Series2: 'Crew Cab',
+    BedType: 'Short',
+    DisplacementL: '5.7',
+    EngineCylinders: '8',
+    FuelTypePrimary: 'Gasoline',
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+
+  assert.equal(matches.towMatches[0].engine, '5.7L HEMI V8 eTorque');
+  assert.equal(matches.towMatches[0].cab, 'Crew');
+  assert.equal(matches.towMatches[0].bed, `5'7"`);
+  assert.equal(matches.towMatches[0].drive, '4x2');
+  assert.equal(matches.towMatches[0].maxTow, 8220);
 });
 
 test('buildReverseRecommendations prefers the lowest qualifying 1500 setup before stepping up to HD', () => {
