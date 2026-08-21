@@ -256,6 +256,45 @@ test('buildVinCapacitySummary stays exact when the VIN result includes axle rati
   assert.equal(payloadSummary.max, 3110);
 });
 
+test('findMatches supports the 2026 3500 gas HEMI chart rows', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '3500',
+    engine: '6.4L HEMI V8',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `6'4"`,
+    rearWheels: 'SRW',
+    axleRatio: '4.10',
+    gvwr: 11040,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+
+  assert.equal(matches.towMatches[0].maxTow, 17010);
+  assert.equal(matches.payloadMatches[0].maxPayload, 4250);
+});
+
+test('buildVinCapacitySummary keeps an honest range for ambiguous 3500 gas HEMI stickers', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '3500',
+    engine: '6.4L HEMI V8',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `6'4"`,
+    rearWheels: 'SRW',
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+
+  assert.equal(towSummary.isRange, true);
+  assert.equal(towSummary.min, 14770);
+  assert.equal(towSummary.max, 17010);
+  assert.match(towSummary.note, /axle ratio/i);
+});
+
 test('findMatches uses 2025 light-duty chart rows when the sticker is a 2025 truck', () => {
   const spec = cleanSpec({
     year: 2025,

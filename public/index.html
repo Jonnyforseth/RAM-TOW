@@ -87,6 +87,21 @@
               <div id="detected-pills" class="pill-row"></div>
             </div>
 
+            <section id="vin-refinement" class="vin-refinement hidden" aria-live="polite">
+              <h3>Confirm Exact Rating</h3>
+              <p>RAM&rsquo;s window sticker did not confirm every chart detail. Select the axle ratio and/or GVWR from the door sticker to narrow this result.</p>
+              <div class="field-grid">
+                <label id="vin-axle-field" class="field hidden">
+                  <span>Axle Ratio</span>
+                  <select id="vin-axle-select"></select>
+                </label>
+                <label id="vin-gvwr-field" class="field hidden">
+                  <span>Door-Sticker GVWR</span>
+                  <select id="vin-gvwr-select"></select>
+                </label>
+              </div>
+            </section>
+
             <div class="vin-disclaimer">
               <strong>Disclaimer</strong>
               <p>Confirm exact towing capacity with the selling dealer before purchase or towing. Verify payload on the truck&rsquo;s payload sticker, because payload ratings can vary based on equipment, options, and packages.</p>

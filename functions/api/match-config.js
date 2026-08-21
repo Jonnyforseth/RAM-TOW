@@ -1,7 +1,7 @@
 import chartService from '../../src/lib/chart-service.js';
 import { json, errorResponse } from '../_shared/http.js';
 
-const { cleanSpec, findMatches, findRawChartHints, getOverrideOptions } = chartService;
+const { buildVinCapacitySummary, cleanSpec, findMatches, findRawChartHints, getOverrideOptions } = chartService;
 
 export async function onRequestPost(context) {
   try {
@@ -22,6 +22,8 @@ export async function onRequestPost(context) {
       chartYear,
       towMatch: matches.towMatches[0] || null,
       payloadMatch: matches.payloadMatches[0] || null,
+      towSummary: buildVinCapacitySummary(spec, matches, 'tow'),
+      payloadSummary: buildVinCapacitySummary(spec, matches, 'payload'),
       matches,
       overrideOptions: getOverrideOptions(spec, matches),
       rawHints,

@@ -448,6 +448,30 @@ body::before {
   font-weight: 700;
 }
 
+.vin-refinement {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(176, 58, 34, 0.24);
+  border-top: 4px solid var(--red);
+  border-radius: 3px;
+  background: rgba(239, 232, 221, 0.58);
+}
+
+.vin-refinement h3,
+.vin-refinement p {
+  margin: 0;
+}
+
+.vin-refinement h3 {
+  font-size: 1rem;
+}
+
+.vin-refinement p {
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
 .vin-disclaimer {
   padding: 14px 16px;
   border: 1px solid rgba(176, 58, 34, 0.18);

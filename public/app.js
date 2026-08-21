@@ -13,6 +13,11 @@ const vinScanModal = document.querySelector('#vin-scan-modal');
 const vinScanCloseButton = document.querySelector('#vin-scan-close');
 const vinScanModalStatus = document.querySelector('#vin-scan-modal-status');
 const vinScanVideo = document.querySelector('#vin-scan-video');
+const vinRefinement = document.querySelector('#vin-refinement');
+const vinAxleField = document.querySelector('#vin-axle-field');
+const vinAxleSelect = document.querySelector('#vin-axle-select');
+const vinGvwrField = document.querySelector('#vin-gvwr-field');
+const vinGvwrSelect = document.querySelector('#vin-gvwr-select');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -83,6 +88,9 @@ let vinScanSessionToken = 0;
 let vinScanOcrTimeout = null;
 let vinScanOcrRunning = false;
 let vinScanResultLocked = false;
+let vinBaseSpec = null;
+let vinOverrideOptions = null;
+let vinRefinementRequest = 0;
 
 function renderInsight(item) {
   return `
@@ -224,18 +232,93 @@ function renderInventoryLink(row) {
   `;
 }
 
-function renderVinResponse(response) {
-  stickerLink.href = response.pdfUrl;
-  renderDetectedSpec(response.detectedSpec);
-  renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow', response.towSummary, response.detectedSpec);
-  renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload', response.payloadSummary, response.detectedSpec);
+function renderRefinementOptions(select, values, selectedValue, placeholder, formatValue = (value) => value) {
+  const selected = selectedValue == null ? '' : String(selectedValue);
+  select.innerHTML = [
+    `<option value="">${escapeHtml(placeholder)}</option>`,
+    ...values.map((value) => `<option value="${escapeHtml(value)}"${String(value) === selected ? ' selected' : ''}>${escapeHtml(formatValue(value))}</option>`),
+  ].join('');
+}
+
+function renderVinRefinement(response, spec) {
+  const needsRefinement = response.towSummary?.isRange || response.payloadSummary?.isRange;
+  const axleOptions = vinOverrideOptions?.axleRatio || [];
+  const gvwrOptions = vinOverrideOptions?.gvwr || [];
+  const showAxle = needsRefinement && !vinBaseSpec?.axleRatio && axleOptions.length > 1;
+  const showGvwr = needsRefinement && !vinBaseSpec?.gvwr && gvwrOptions.length > 1;
+
+  if (!needsRefinement || (!showAxle && !showGvwr)) {
+    vinRefinement.classList.add('hidden');
+    return;
+  }
+
+  vinAxleField.classList.toggle('hidden', !showAxle);
+  vinGvwrField.classList.toggle('hidden', !showGvwr);
+
+  if (showAxle) {
+    renderRefinementOptions(vinAxleSelect, axleOptions, spec.axleRatio, 'Select axle ratio');
+  }
+  if (showGvwr) {
+    renderRefinementOptions(vinGvwrSelect, gvwrOptions, spec.gvwr, 'Select GVWR', (value) => `${formatNumber(Number(value))} lb`);
+  }
+
+  vinRefinement.classList.remove('hidden');
+}
+
+function renderVinResponse(response, detectedSpec = response.detectedSpec) {
+  if (response.pdfUrl) {
+    stickerLink.href = response.pdfUrl;
+  }
+  renderDetectedSpec(detectedSpec);
+  renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow', response.towSummary, detectedSpec);
+  renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload', response.payloadSummary, detectedSpec);
+  renderVinRefinement(response, detectedSpec);
   vinResults.classList.remove('hidden');
 
-  if (response.detectedSpec?.stickerAvailable === false) {
+  if (detectedSpec?.stickerAvailable === false) {
     showStatus(
       vinStatus,
       'Chrysler did not return a window sticker for this VIN. This result uses the VIN decode for cab, engine, drive, and bed, then falls back to the safest matching chart row until axle ratio and exact sticker data can be confirmed.'
     );
+  }
+}
+
+function showVinLookupResponse(response) {
+  vinBaseSpec = { ...response.detectedSpec };
+  vinOverrideOptions = response.overrideOptions || {};
+  renderVinResponse(response, vinBaseSpec);
+}
+
+async function refineVinCapacity() {
+  if (!vinBaseSpec) {
+    return;
+  }
+
+  const requestId = ++vinRefinementRequest;
+  const spec = {
+    ...vinBaseSpec,
+    axleRatio: vinAxleSelect?.value || null,
+    gvwr: vinGvwrSelect?.value ? Number(vinGvwrSelect.value) : null,
+  };
+
+  showStatus(vinStatus, 'Refining the RAM chart match...');
+
+  try {
+    const response = await fetchJson('/api/match-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(spec),
+    });
+    if (requestId !== vinRefinementRequest) {
+      return;
+    }
+
+    hideStatus(vinStatus);
+    renderVinResponse(response, { ...vinBaseSpec, ...response.spec });
+  } catch (error) {
+    if (requestId === vinRefinementRequest) {
+      showStatus(vinStatus, error.message, true);
+    }
   }
 }
 
@@ -861,7 +944,7 @@ async function processDetectedVin(vin) {
   try {
     const response = await fetchJson(`/api/lookup-vin/${encodeURIComponent(vin)}`);
     hideStatus(vinStatus);
-    renderVinResponse(response);
+    showVinLookupResponse(response);
   } catch (error) {
     showStatus(vinStatus, error.message, true);
   }
@@ -906,7 +989,7 @@ vinForm.addEventListener('submit', async (event) => {
   try {
     const response = await fetchJson(`/api/lookup-vin/${encodeURIComponent(vin)}`);
     hideStatus(vinStatus);
-    renderVinResponse(response);
+    showVinLookupResponse(response);
   } catch (error) {
     showStatus(vinStatus, error.message, true);
   }
@@ -921,6 +1004,12 @@ if (vinScanButton) {
 if (vinScanCloseButton) {
   vinScanCloseButton.addEventListener('click', () => {
     closeVinScanModal();
+  });
+}
+
+for (const refinementInput of [vinAxleSelect, vinGvwrSelect]) {
+  refinementInput?.addEventListener('change', () => {
+    void refineVinCapacity();
   });
 }
 

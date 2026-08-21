@@ -59,18 +59,54 @@ const LIGHT_DUTY_PAYLOAD_ROWS_2025 = [
 
 const HD_TOW_ROWS_2025 = [
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '4.10', gvwr: 8565, gcwr: 18000, maxTow: 10530, trimHint: 'Power Wagon' },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15550 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15230 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15210 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 14920 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15070 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 14730 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15550 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15240 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15220 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 14930 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15080 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 14720 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17750 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17430 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17410 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17120 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17270 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 16930 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17750 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17440 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17420 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17130 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17280 },
   { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 16920 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 15150 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 14580 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17350 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17010 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 15490 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 15100 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 15100 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22000, maxTow: 14770 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 11150, gcwr: 22000, maxTow: 14930 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11440, gcwr: 22000, maxTow: 14560 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17730 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17330 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17340 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24240, maxTow: 17010 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 11150, gcwr: 24240, maxTow: 17170 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11440, gcwr: 24240, maxTow: 16800 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15750 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15360 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15150 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 14800 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 18150 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17760 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17550 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17200 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 24290, maxTow: 14630 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 24290, maxTow: 15380 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 24290, maxTow: 15710 },
@@ -230,6 +266,90 @@ const HD_PAYLOAD_ROWS_2026 = [
   { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 14000, maxPayload: 5380, confidence: 'medium' },
 ];
 
+// The HD PDF combines 2500 and 3500 gas entries into a single dense table.
+// Keep the 3500 HEMI rows separate so their chart source remains clear.
+const HD_GAS_3500_TOW_ROWS_2026 = [
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 11040, gcwr: 22050, maxTow: 15490 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22050, maxTow: 15100 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 11040, gcwr: 22050, maxTow: 15100 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.73', gvwr: 11040, gcwr: 22050, maxTow: 14770 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 11150, gcwr: 22000, maxTow: 14930 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 11440, gcwr: 22000, maxTow: 14560 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 11040, gcwr: 24250, maxTow: 17730 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24250, maxTow: 17330 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 11040, gcwr: 24250, maxTow: 17340 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '4.10', gvwr: 11040, gcwr: 24250, maxTow: 17010 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 11150, gcwr: 24240, maxTow: 17170 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 11440, gcwr: 24240, maxTow: 16800 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15750 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15360 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 15150 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.73', gvwr: 14000, gcwr: 22600, maxTow: 14800 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 18150 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17760 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17550 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17200 },
+];
+
+const HD_GAS_2500_4X2_TOW_ROWS_2026 = [
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15540 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15210 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 9900, gcwr: 22050, maxTow: 15070 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15540 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15220 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.73', gvwr: 10000, gcwr: 22050, maxTow: 15080 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17740 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17410 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 9900, gcwr: 24250, maxTow: 17270 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17570 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17420 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '4.10', gvwr: 10000, gcwr: 24250, maxTow: 17280 },
+];
+
+const HD_GAS_2500_4X2_PAYLOAD_ROWS_2026 = [
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 9900, maxPayload: 3830 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 9900, maxPayload: 3500 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 9900, maxPayload: 3360 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 10000, maxPayload: 3930 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 10000, maxPayload: 3610 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 10000, maxPayload: 3470 },
+];
+
+const HD_GAS_2500_4X2_PAYLOAD_ROWS_2025 = [
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 9900, maxPayload: 3840 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 9900, maxPayload: 3500 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 9900, maxPayload: 3360 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 10000, maxPayload: 3940 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 10000, maxPayload: 3610 },
+  { model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 10000, maxPayload: 3470 },
+];
+
+const HD_GAS_3500_PAYLOAD_ROWS_2025 = [
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 11040, maxPayload: 4970 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 11040, maxPayload: 4580 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 11040, maxPayload: 4580 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 11040, maxPayload: 4250 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 11150, maxPayload: 4520 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 11440, maxPayload: 4440 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 14000, maxPayload: 7590 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 7200 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 14000, maxPayload: 6990 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 6640 },
+];
+
+const HD_GAS_3500_PAYLOAD_ROWS_2026 = [
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 11040, maxPayload: 4970 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 11040, maxPayload: 4580 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 11040, maxPayload: 4580 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 11040, maxPayload: 4250 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 11150, maxPayload: 4520 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 11440, maxPayload: 4440 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x2', gvwr: 14000, maxPayload: 7590 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 7200 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 14000, maxPayload: 6990 },
+  { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 6640 },
+];
+
 const HITCH_LIMITS = {
   '1500': 1100,
   '2500': 2000,
@@ -245,12 +365,12 @@ const CHART_DATA_BY_YEAR = {
   2025: {
     pdfPaths: PDF_PATHS_BY_YEAR[2025],
     towRows: [...LIGHT_DUTY_TOW_ROWS_2025, ...HD_TOW_ROWS_2025],
-    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2025, ...HD_PAYLOAD_ROWS_2025],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2025, ...HD_PAYLOAD_ROWS_2025, ...HD_GAS_2500_4X2_PAYLOAD_ROWS_2025, ...HD_GAS_3500_PAYLOAD_ROWS_2025],
   },
   2026: {
     pdfPaths: PDF_PATHS_BY_YEAR[2026],
-    towRows: [...LIGHT_DUTY_TOW_ROWS_2026, ...HD_TOW_ROWS_2026],
-    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2026, ...HD_PAYLOAD_ROWS_2026],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2026, ...HD_TOW_ROWS_2026, ...HD_GAS_2500_4X2_TOW_ROWS_2026, ...HD_GAS_3500_TOW_ROWS_2026],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2026, ...HD_PAYLOAD_ROWS_2026, ...HD_GAS_2500_4X2_PAYLOAD_ROWS_2026, ...HD_GAS_3500_PAYLOAD_ROWS_2026],
   },
 };
 

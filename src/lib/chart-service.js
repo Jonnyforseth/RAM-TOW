@@ -149,6 +149,8 @@ function cleanSpec(input = {}) {
     trim: input.trim ? String(input.trim).trim() : null,
     axleRatio: input.axleRatio ? String(input.axleRatio).trim() : null,
     gvwr: toNumber(input.gvwr),
+    gvwrClassMin: toNumber(input.gvwrClassMin),
+    gvwrClassMax: toNumber(input.gvwrClassMax),
   };
 }
 
