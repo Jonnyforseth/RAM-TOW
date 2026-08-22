@@ -133,6 +133,15 @@ body::before {
   text-transform: uppercase;
 }
 
+.home-brand-logo {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: clamp(180px, 22vw, 280px);
+  height: auto;
+  margin: 0 0 10px;
+}
+
 .home-hero-copy {
   position: relative;
   z-index: 1;
@@ -388,9 +397,22 @@ body::before {
 }
 
 .site-footer p {
+  flex: 1 1 360px;
   margin: 0;
   color: rgba(255, 250, 241, 0.76);
   line-height: 1.5;
+}
+
+.site-footer-brand {
+  display: block;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.site-footer-brand img {
+  display: block;
+  width: 130px;
+  height: auto;
 }
 
 .site-footer p a {
@@ -1122,17 +1144,14 @@ body.fit-page::before {
 }
 
 .fit-brand {
-  color: #f9f3e9;
-  font-family: 'Barlow Condensed', Impact, sans-serif;
-  font-size: 1.8rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  line-height: 1;
-  text-decoration: none;
+  display: block;
+  line-height: 0;
 }
 
-.fit-brand span {
-  color: var(--sand);
+.fit-brand img {
+  display: block;
+  width: 142px;
+  height: auto;
 }
 
 .fit-nav-actions {
@@ -1753,10 +1772,12 @@ body.fit-page::before {
 
   .fit-nav {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .fit-nav-actions {
-    max-width: 215px;
+    max-width: none;
+    justify-content: flex-start;
   }
 
   .fit-hero {
