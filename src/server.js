@@ -21,7 +21,13 @@ const app = express();
 const PORT = 4324;
 
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html') || filePath.endsWith('styles.css')) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  },
+}));
 
 app.get('/api/health', async (_req, res) => {
   await Promise.all(SUPPORTED_CHART_YEARS.map((year) => ensureChartTexts(year)));

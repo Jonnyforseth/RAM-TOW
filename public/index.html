@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=b9d5c3a3a895">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -37,10 +37,16 @@
       }
     </script>
   </head>
-  <body>
+  <body class="home-page">
     <div class="page-shell">
       <header class="hero">
-        <h1>RAM TOWING CALCULATOR</h1>
+        <p class="home-eyebrow">RAM Towing Calculator</p>
+        <h1>Know Your Truck.<br>Know Your Load.</h1>
+        <p class="home-hero-copy">Check a RAM VIN for chart-backed towing and payload, or start with the trailer you are pulling.</p>
+        <div class="home-hero-actions">
+          <a class="button button-primary" href="#vin-form">Look Up a VIN</a>
+          <a class="button button-ghost" href="#trailer-fit">Find My RAM</a>
+        </div>
       </header>
 
       <main class="grid">
@@ -54,7 +60,7 @@
             <label class="field">
               <span>VIN</span>
               <div class="inline-field">
-                <input id="vin-input" name="vin" type="text" maxlength="17" placeholder="1C6SRFFT5TN229615" autocomplete="off">
+                <input id="vin-input" name="vin" type="text" maxlength="17" autocomplete="off">
                 <div class="button-stack">
                   <button type="submit" class="button button-primary">Run VIN</button>
                   <button id="vin-scan-button" type="button" class="button button-secondary">Scan VIN</button>
@@ -141,11 +147,11 @@
             <div class="field-grid">
               <label class="field">
                 <span>Trailer Weight</span>
-                <input id="trailer-weight" type="number" min="0" step="1" placeholder="9500">
+                <input id="trailer-weight" type="number" min="0" step="1">
               </label>
               <label class="field">
                 <span id="tongue-weight-label">Tongue Weight</span>
-                <input id="tongue-weight" type="number" min="0" step="1" placeholder="950">
+                <input id="tongue-weight" type="number" min="0" step="1">
               </label>
             </div>
             <label class="field">
@@ -199,6 +205,6 @@
     </div>
     <script src="/vendor/zxing-browser.min.js"></script>
     <script src="/vendor/tesseract.min.js"></script>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=b9d5c3a3a895"></script>
   </body>
 </html>

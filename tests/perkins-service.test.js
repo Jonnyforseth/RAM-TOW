@@ -249,6 +249,24 @@ test('getMatchingPerkinsEngineFilters includes both HEMI aliases for the 5.7L eT
   ]);
 });
 
+test('getMatchingPerkinsEngineFilters keeps all 3.0L I6 options visible for Hurricane HO', () => {
+  const matches = getMatchingPerkinsEngineFilters(
+    [
+      '3.0L I6',
+      '3.0L I6 Hurricane SO Twin Turbo ESS',
+      '3.0L I6 Hurricane HO Twin Turbo ESS',
+      '5.7L V8 HEMI MDS VVT eTorque Engine',
+    ],
+    '3.0L Hurricane HO'
+  );
+
+  assert.deepEqual(matches, [
+    '3.0L I6',
+    '3.0L I6 Hurricane SO Twin Turbo ESS',
+    '3.0L I6 Hurricane HO Twin Turbo ESS',
+  ]);
+});
+
 test('getMatchingPerkinsEngineFilters includes generic and Cummins-labelled 6.7L I6 diesel options', () => {
   const matches = getMatchingPerkinsEngineFilters(
     [

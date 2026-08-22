@@ -7,6 +7,7 @@ const STATIC_LANDING_PAGES = new Map([
   ['/ram-2500-towing-capacity', '/ram-2500-towing-capacity/index.html'],
   ['/ram-3500-towing-capacity', '/ram-3500-towing-capacity/index.html'],
   ['/can-a-ram-1500-tow-10000-lbs', '/can-a-ram-1500-tow-10000-lbs/index.html'],
+  ['/trailer-fit', '/trailer-fit/index.html'],
 ]);
 
 function methodNotAllowed() {
@@ -15,6 +16,22 @@ function methodNotAllowed() {
     headers: {
       'content-type': 'application/json; charset=utf-8',
     },
+  });
+}
+
+function withPageCacheHeaders(response, pathname) {
+  const shouldRevalidate = pathname === '/' || pathname.endsWith('.html') || pathname === '/styles.css';
+  if (!shouldRevalidate) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  // Avoid a stale document referencing an older stylesheet after a deployment.
+  headers.set('cache-control', 'no-cache, must-revalidate');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
@@ -59,9 +76,9 @@ export default {
     const staticPage = STATIC_LANDING_PAGES.get(pathname);
     if (staticPage) {
       const assetUrl = new URL(staticPage, url);
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      return withPageCacheHeaders(await env.ASSETS.fetch(new Request(assetUrl, request)), staticPage);
     }
 
-    return env.ASSETS.fetch(request);
+    return withPageCacheHeaders(await env.ASSETS.fetch(request), pathname);
   },
 };

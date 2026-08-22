@@ -1184,60 +1184,22 @@ for (const refinementInput of [vinBedSelect, vinRamBoxSelect, vinAxleSelect, vin
 reverseForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   resetReverseResults();
-
-  showStatus(reverseStatus, 'Building the minimum RAM setups that clear your trailer...');
-
-  try {
-    const payload = {
-      trailerWeight: Number(trailerWeightInput.value),
-      tongueWeight: Number(tongueWeightInput.value),
-      hitchType: hitchTypeInput?.value || 'conventional',
-      modelPreference: modelPreferenceInput.value,
-    };
-    saveTrailerTarget(payload);
-
-    const response = await fetchJson('/api/reverse-lookup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    hideStatus(reverseStatus);
-    reverseResults.classList.remove('hidden');
-
-    const insights = response.insights || [];
-    for (const item of insights) {
-      reverseResults.insertAdjacentHTML('beforeend', renderInsight(item));
-    }
-
-    const recommendations = response.results || [];
-
-    if (!recommendations.length) {
-      const card = document.createElement('article');
-      card.className = 'alternate-card';
-      card.innerHTML = '<h4>No chart match found</h4><p>No 2026 RAM chart setup clears that trailer and tongue-weight combination with this filter. Try a larger RAM class or adjust the trailer inputs.</p>';
-      reverseResults.appendChild(card);
-      return;
-    }
-
-    for (const row of recommendations) {
-      const card = document.createElement('article');
-      card.className = 'alternate-card';
-      card.innerHTML = `
-        <h4>${escapeHtml(row.recommendationTitle || `RAM ${row.model}`)}</h4>
-        <p class="recommendation-kicker">RAM ${escapeHtml(row.model || '')} &bull; ${escapeHtml(row.engine || '-')} &bull; ${escapeHtml(row.drive || '-')}</p>
-        <p>Minimum build: ${escapeHtml(row.cab || '-')} ${escapeHtml(row.bed || '')}${row.rearWheels ? ` &bull; ${escapeHtml(row.rearWheels)}` : ''}${row.axleRatio ? ` &bull; Axle ${escapeHtml(row.axleRatio)}` : ''}</p>
-        <p>Towing Capacity: ${formatCapacity(row.maxTow)} &bull; Payload Capacity: ${formatCapacity(row.maxPayload)}</p>
-        <p>Chart setup: GCWR ${row.towGCWR ? formatNumber(row.towGCWR) : '-'} lb &bull; GVWR ${row.payloadGVWR ? formatNumber(row.payloadGVWR) : '-'} lb</p>
-        <p>Headroom: ${formatCapacity(row.towSurplus)} tow &bull; ${formatCapacity(row.payloadSurplus)} payload</p>
-        ${renderInventoryLink(row, payload)}
-        <span class="confidence">Verify the VIN in the decoder to confirm axle ratio and exact truck configuration before you buy.</span>
-      `;
-      reverseResults.appendChild(card);
-    }
-  } catch (error) {
-    showStatus(reverseStatus, error.message, true);
+  const payload = getTrailerTarget();
+  if (!payload) {
+    showStatus(reverseStatus, 'Enter a loaded trailer weight and tongue or pin weight to see matching RAM trucks.', true);
+    return;
   }
+
+  saveTrailerTarget(payload);
+  const params = new URLSearchParams({
+    trailerWeight: String(Math.round(payload.trailerWeight)),
+    tongueWeight: String(Math.round(payload.tongueWeight)),
+    hitchType: payload.hitchType,
+  });
+  if (payload.modelPreference) {
+    params.set('modelPreference', payload.modelPreference);
+  }
+  window.location.assign(`/trailer-fit/?${params.toString()}`);
 });
 
 for (const input of reverseInputs) {

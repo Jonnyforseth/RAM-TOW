@@ -351,6 +351,30 @@ test('findMatches returns the 2026 gas 2500 crew long-bed row instead of falling
   assert.equal(matches.payloadMatches[0].maxPayload, 3020);
 });
 
+test('2026 Hurricane HO Limited stays on the Limited chart row instead of including RHO', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '1500',
+    engine: '3.0L Hurricane HO',
+    trim: 'Limited',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `5'7"`,
+    axleRatio: '3.92',
+    gvwr: 7100,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.deepEqual(matches.towMatches.map((row) => row.trim), ['Limited']);
+  assert.equal(towSummary.isRange, false);
+  assert.equal(towSummary.min, 9240);
+  assert.equal(payloadSummary.isRange, false);
+  assert.equal(payloadSummary.min, 1390);
+});
+
 test('findMatches keeps the 2025 gas 2500 crew long-bed row on the 2025 chart set', () => {
   const spec = cleanSpec({
     year: 2025,
@@ -612,8 +636,38 @@ test('buildReverseRecommendations stays inside the chosen model filter', () => {
     modelPreference: '1500',
   });
 
-  assert.ok(recommendations.length >= 2);
+  assert.ok(recommendations.length >= 1);
   assert.equal(recommendations.every((row) => row.model === '1500'), true);
+});
+
+test('buildReverseRecommendations labels good, better, and best trailer-fit tiers from chart reserve', () => {
+  const trailerWeight = 10150;
+  const recommendations = buildReverseRecommendations({
+    trailerWeight,
+    tongueWeight: 1014,
+    modelPreference: '',
+  });
+
+  assert.equal(recommendations[0].recommendationTier, 'good');
+  assert.equal(recommendations[0].towReservePercent, Math.round((recommendations[0].towSurplus / trailerWeight) * 100));
+  assert.equal(recommendations.some((row) => row.recommendationTier === 'better'), true);
+  assert.equal(recommendations.some((row) => row.recommendationTier === 'best'), true);
+  assert.equal(recommendations.every((row) => row.drive === '4x4'), true);
+  assert.equal(recommendations.every((row) => row.towReservePercent >= 10 || row.isMaximum3500Dually), true);
+});
+
+test('a light trailer gets three engine-diverse RAM 1500 recommendations before stepping up to HD', () => {
+  const recommendations = buildReverseRecommendations({
+    trailerWeight: 5000,
+    tongueWeight: 500,
+    modelPreference: '',
+  });
+
+  assert.equal(recommendations.length, 3);
+  assert.equal(recommendations.every((row) => row.model === '1500'), true);
+  assert.equal(new Set(recommendations.map((row) => row.engineFamily)).size, 3);
+  assert.equal(recommendations.every((row) => row.towReservePercent >= 10), true);
+  assert.equal(recommendations.every((row) => row.headlineMaxTow >= row.maxTow), true);
 });
 
 test('buildReverseInsights explains when 1500 is excluded by tongue-weight footnote', () => {

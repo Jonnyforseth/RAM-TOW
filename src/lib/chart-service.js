@@ -17,7 +17,7 @@ const chartCache = {
   textsByYear: {},
 };
 
-const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trimStrict']);
+const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trim', 'trimStrict']);
 
 function normalize(value) {
   return String(value || '')
@@ -341,7 +341,10 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
-  const trimCompatibleRows = candidateRows.filter((row) => (!row.trimHint && !row.trimStrict) || !spec.trim || trimMatches(row.trim || row.trimHint || row.trimStrict, spec.trim));
+  const trimCompatibleRows = candidateRows.filter((row) => {
+    const rowTrim = row.trim || row.trimHint || row.trimStrict;
+    return !rowTrim || !spec.trim || trimMatches(rowTrim, spec.trim);
+  });
   if (trimCompatibleRows.length) {
     candidateRows = trimCompatibleRows;
   }
@@ -461,7 +464,10 @@ function getOverrideOptions(spec, matches) {
   };
 
   const compatibleRows = [...matches.towMatches, ...matches.payloadMatches]
-    .filter((row) => (!row.trimHint && !row.trimStrict) || !spec.trim || trimMatches(row.trim || row.trimHint || row.trimStrict, spec.trim));
+    .filter((row) => {
+      const rowTrim = row.trim || row.trimHint || row.trimStrict;
+      return !rowTrim || !spec.trim || trimMatches(rowTrim, spec.trim);
+    });
 
   for (const row of compatibleRows) {
     for (const key of Object.keys(options)) {
@@ -582,21 +588,62 @@ function pairPayloadRows(towRow, tongueWeight, payloadRowsForYear = payloadRows)
   });
 }
 
+function getEngineFamily(engine) {
+  const normalized = String(engine || '').toLowerCase();
+  if (normalized.includes('pentastar')) {
+    return 'pentastar';
+  }
+  if (normalized.includes('hemi')) {
+    return 'hemi';
+  }
+  if (normalized.includes('hurricane')) {
+    return 'hurricane';
+  }
+  if (normalized.includes('cummins')) {
+    return 'cummins';
+  }
+  return normalized || 'other';
+}
+
+function getHighestFourByFourTowRow(towRow, towRowsForYear) {
+  return towRowsForYear
+    .filter((row) => row.model === towRow.model && row.engine === towRow.engine && row.drive === '4x4')
+    .sort((left, right) => right.maxTow - left.maxTow)[0] || towRow;
+}
+
 function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference, hitchType }) {
   const modelFilter = String(modelPreference || '').trim();
   const hitchMode = normalizeHitchType(hitchType);
   const towRowsForYear = towRows;
   const payloadRowsForYear = payloadRows;
   const results = [];
+  const minimumTowWithHeadroom = trailerWeight * 1.1;
+  const maximum3500DuallyTow = Math.max(
+    ...towRowsForYear
+      .filter((row) => row.model === '3500' && row.drive === '4x4' && row.rearWheels === 'DRW')
+      .map((row) => row.maxTow),
+    0
+  );
 
   for (const towRow of towRowsForYear) {
     if (modelFilter && towRow.model !== modelFilter) {
+      continue;
+    }
+    // Perkins Motors carries 4x4 RAM trucks, so the shopper-facing fit tool only uses 4x4 chart rows.
+    if (towRow.drive !== '4x4') {
       continue;
     }
     if (hitchMode === 'gooseneck' && towRow.model === '1500') {
       continue;
     }
     if (towRow.maxTow < trailerWeight) {
+      continue;
+    }
+    const isMaximum3500Dually =
+      towRow.model === '3500' &&
+      towRow.rearWheels === 'DRW' &&
+      towRow.maxTow === maximum3500DuallyTow;
+    if (towRow.maxTow < minimumTowWithHeadroom && !isMaximum3500Dually) {
       continue;
     }
     if (hitchMode === 'conventional') {
@@ -610,6 +657,7 @@ function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference
       }
     }
     const payloadCandidates = pairPayloadRows(towRow, tongueWeight, payloadRowsForYear);
+    const headlineTowRow = getHighestFourByFourTowRow(towRow, towRowsForYear);
     for (const payloadRow of payloadCandidates) {
       results.push({
         model: towRow.model,
@@ -624,6 +672,14 @@ function collectReverseLookupRows({ trailerWeight, tongueWeight, modelPreference
         payloadGVWR: payloadRow.gvwr || null,
         maxTow: towRow.maxTow,
         maxPayload: payloadRow.maxPayload,
+        headlineMaxTow: headlineTowRow.maxTow,
+        headlineTowConfiguration: {
+          cab: headlineTowRow.cab,
+          bed: headlineTowRow.bed,
+          rearWheels: headlineTowRow.rearWheels || null,
+          axleRatio: headlineTowRow.axleRatio || null,
+        },
+        isMaximum3500Dually,
         towSurplus: towRow.maxTow - trailerWeight,
         payloadSurplus: payloadRow.maxPayload - tongueWeight,
         confidence: towRow.confidence || payloadRow.confidence || 'high',
@@ -700,10 +756,8 @@ function buildReverseRecommendations({ trailerWeight, tongueWeight, modelPrefere
 
   const selected = [];
   const selectedKeys = new Set();
-  const primaryModel = uniqueRows[0].model;
-  const maxPrimaryCount = modelFilter ? 4 : 3;
 
-  function addRow(row, kind) {
+  function addRow(row, kind, tier, fallback = false) {
     if (!row) {
       return false;
     }
@@ -714,37 +768,45 @@ function buildReverseRecommendations({ trailerWeight, tongueWeight, modelPrefere
     selected.push({
       ...row,
       recommendationTitle: getRecommendationTitle(row, { kind, modelFilter }),
+      recommendationTier: tier,
+      tierFallback: fallback,
+      engineFamily: getEngineFamily(row.engine),
+      towReservePercent: Math.round((row.towSurplus / trailerWeight) * 100),
+      payloadReservePercent: Math.round((row.payloadSurplus / tongueWeight) * 100),
     });
     selectedKeys.add(key);
     return true;
   }
 
-  addRow(uniqueRows[0], 'minimum');
-
-  for (const row of uniqueRows) {
-    if (selected.length >= maxPrimaryCount) {
-      break;
-    }
-    if (row.model !== primaryModel) {
-      continue;
-    }
-    addRow(row, 'alternate');
+  function findUnselected(predicate) {
+    return uniqueRows.find((row) => !selectedKeys.has(getReverseProfileKey(row)) && predicate(row));
   }
 
-  if (!modelFilter) {
-    const seenModels = new Set([primaryModel]);
-    for (const row of uniqueRows) {
-      if (selected.length >= 4) {
-        break;
-      }
-      if (seenModels.has(row.model)) {
-        continue;
-      }
-      if (addRow(row, 'stepup')) {
-        seenModels.add(row.model);
-      }
-    }
+  addRow(uniqueRows[0], 'minimum', 'good');
+
+  function findDifferentEngineInPrimaryModel() {
+    const selectedEngineFamilies = new Set(
+      selected.filter((row) => row.model === uniqueRows[0].model).map((row) => row.engineFamily)
+    );
+    return findUnselected((row) =>
+      row.model === uniqueRows[0].model && !selectedEngineFamilies.has(getEngineFamily(row.engine))
+    );
   }
+
+  function findStepUpOrLateral() {
+    return findUnselected((row) => Number(row.model) > Number(uniqueRows[0].model))
+      || findUnselected((row) => row.model === uniqueRows[0].model && row.rearWheels !== uniqueRows[0].rearWheels)
+      || findUnselected((row) => row.model === uniqueRows[0].model)
+      || findUnselected(() => true);
+  }
+
+  // Keep same-model choices engine-diverse first. If a qualifying engine is unavailable,
+  // step up in truck class rather than showing duplicate versions of the same engine.
+  const betterEngine = findDifferentEngineInPrimaryModel();
+  addRow(betterEngine || findStepUpOrLateral(), betterEngine ? 'alternate' : 'stepup', 'better', !betterEngine);
+
+  const bestEngine = findDifferentEngineInPrimaryModel();
+  addRow(bestEngine || findStepUpOrLateral(), bestEngine ? 'alternate' : 'stepup', 'best', !bestEngine);
 
   return selected;
 }

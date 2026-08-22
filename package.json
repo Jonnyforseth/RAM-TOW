@@ -4,6 +4,7 @@
   "description": "Local RAM towing and payload lookup site",
   "main": "src/server.js",
   "scripts": {
+    "build": "node scripts/version-assets.js",
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "test": "node --test"

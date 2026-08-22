@@ -437,7 +437,8 @@ function matchesPerkinsEngineFilter(filterValue, engine) {
     case '3.0L Hurricane SO':
       return text.includes('3 0l') && text.includes('hurricane') && text.includes('so');
     case '3.0L Hurricane HO':
-      return text.includes('3 0l') && text.includes('hurricane') && text.includes('ho');
+      // Perkins splits the Hurricane inventory inconsistently, so show every 3.0L I6 option.
+      return text.includes('3 0l') && text.includes('i6');
     case '6.4L HEMI V8':
       return text.includes('6 4l') && (text.includes('hemi') || text.includes('v8'));
     case '6.7L Cummins HO':
