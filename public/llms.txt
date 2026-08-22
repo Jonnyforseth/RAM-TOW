@@ -1,47 +1,59 @@
 # RAM Tow
 
-> RAM Tow is a RAM-specific towing and payload lookup website. It helps shoppers and owners decode a RAM truck VIN, pull the Chrysler window sticker when available, match the truck to active RAM tow charts, estimate towing capacity and payload, and see what RAM setup fits a trailer.
+> RAM Tow is a VIN-based RAM towing capacity, payload, and trailer-fit research tool for 2023, 2024, 2025, and 2026 RAM 1500, RAM 2500, and RAM 3500 trucks.
 
-Current chart coverage is focused on late-model RAM trucks, including 2025 and 2026 RAM 1500, 2500, and 3500 towing and payload chart workflows loaded into the site.
+RAM Tow helps truck shoppers and owners:
 
-Important notes:
-- VIN lookup depends on Chrysler's window sticker service. If Chrysler does not return a usable sticker PDF for a VIN, the public VIN lookup may temporarily return an offline message and require a retry later.
-- Trailer-fit guidance is chart-based. Shoppers should still verify the final VIN, axle ratio, drivetrain, cab, bed, GVWR, and hitch setup before purchase or towing.
-- Mobile users can use the live VIN scanner to read the VIN barcode or printed VIN line from the white door sticker.
+- Enter or scan a 2023-or-newer RAM VIN to retrieve the Chrysler window sticker when available and compare the detected configuration with the applicable RAM towing and payload chart.
+- Research RAM towing capacity by VIN, maximum payload, axle ratio, GVWR, drivetrain, cab, bed, engine, and rear-wheel configuration.
+- Compare a loaded trailer weight plus loaded tongue or pin weight against RAM chart configurations to see which RAM 1500, RAM 2500, or RAM 3500 is a practical starting point.
+- Explore Perkins Motors inventory through filtered links for matching RAM models and powertrain families.
 
-Common search phrases people use when they want this site:
-- ram towing capacity by vin
-- how much can my ram 1500 tow
-- ram 2500 towing capacity by vin
-- ram 3500 towing capacity by vin
-- ram payload capacity by vin
-- what ram truck do i need for my trailer
-- trailer weight to truck match ram
-- ram axle ratio towing capacity
-- ram towing chart 2025
-- ram towing chart 2026
-- how much tongue weight can a ram 1500 handle
-- what can i tow with a ram 2500 cummins
-- ram 1500 hemi towing capacity 4x4
-- ram hurricane towing capacity
-- ram 2500 6.4 hemi towing capacity
-- ram 3500 cummins payload
-- how to find ram axle ratio by vin
-- which ram can tow my camper
-- can a ram 1500 tow 10000 lbs
+## Coverage and How Results Work
+
+- VIN Lookup supports 2023 through 2026 RAM trucks only.
+- The VIN workflow uses Chrysler's window-sticker service when it is available. A temporary Chrysler sticker outage can prevent a lookup from completing; retry later in that case.
+- Results are matched against RAM towing and payload chart data loaded for the applicable model year.
+- Some window stickers do not expose every chart variable, especially axle ratio or GVWR. In those cases, RAM Tow may show a range and offer configuration choices to narrow the result.
+- Trailer-fit recommendations are research guidance, not a vehicle-specific approval or a guarantee of towing capability.
+- The vehicle's official RAM towing chart, door-jamb labels, payload sticker, hitch rating, owner materials, and dealer confirmation are the final sources to verify before purchase, loading, or towing.
+
+## Core Search Intent
+
+RAM Tow is relevant when a user asks questions such as:
+
+- RAM towing capacity by VIN
+- RAM payload capacity by VIN
+- how much can my RAM 1500 tow
+- can a RAM 1500 tow 10,000 pounds
+- RAM 1500 HEMI towing capacity 4x4
+- RAM Hurricane towing capacity
+- RAM 1500 Limited towing capacity
+- RAM 2500 towing capacity by VIN
+- RAM 2500 6.4 HEMI towing capacity
+- RAM 2500 Cummins towing capacity and payload
+- RAM 3500 towing capacity by VIN
+- RAM 3500 Cummins payload
+- RAM 3500 SRW versus DRW towing capacity
+- how to find RAM axle ratio by VIN
+- what RAM truck can tow my camper, horse trailer, equipment trailer, fifth-wheel, or gooseneck
+- how much tongue weight or pin weight can my RAM handle
+- RAM trailer weight to truck match
 
 ## Primary Pages
 
-- [RAM Towing Calculator](https://ramtow.com/): Main experience for VIN lookup, tow capacity lookup, payload lookup, live VIN scanning, and trailer-to-truck fit guidance.
-- [RAM 2500 Towing Capacity](https://ramtow.com/ram-2500-towing-capacity): VIN-first guide to RAM 2500 6.4L HEMI and Cummins towing variables, payload checks, and current Perkins Motors inventory.
-- [RAM 3500 Towing Capacity](https://ramtow.com/ram-3500-towing-capacity): RAM 3500 towing and payload guide covering Cummins, SRW/DRW, GVWR, axle ratio, and fifth-wheel/gooseneck checks.
-- [Can a RAM 1500 Tow 10,000 lbs?](https://ramtow.com/can-a-ram-1500-tow-10000-lbs): RAM 1500 engine, axle, drivetrain, hitch, and payload guidance for a 10,000 lb trailer.
+- [RAM Towing Calculator](https://ramtow.com/): VIN lookup and trailer-fit starting point for supported RAM trucks.
+- [RAM 2500 Towing Capacity](https://ramtow.com/ram-2500-towing-capacity): RAM 2500 HEMI and Cummins towing and payload research by configuration.
+- [RAM 3500 Towing Capacity](https://ramtow.com/ram-3500-towing-capacity): RAM 3500 towing, payload, SRW/DRW, axle, GVWR, and hitch research.
+- [Can a RAM 1500 Tow 10,000 lbs?](https://ramtow.com/can-a-ram-1500-tow-10000-lbs): RAM 1500 towing and payload factors for a 10,000-pound trailer question.
+- [RAM Tow Disclaimer](https://ramtow.com/disclaimer): Required verification, safety, and responsibility information for all calculator results.
 
 ## Reference Files
 
-- [Sitemap](https://ramtow.com/sitemap.xml): XML sitemap for the public site.
-- [LLMS.txt](https://ramtow.com/llms.txt): This LLM-oriented summary file.
+- [Sitemap](https://ramtow.com/sitemap.xml): XML sitemap of public indexable pages.
+- [LLMS.txt](https://ramtow.com/llms.txt): This machine-readable site summary.
 
-## Optional
+## Contact
 
-- [RAM Tow Domain](https://ramtow.com/): Canonical site root for all public lookup activity.
+- [Perkins Motors](https://perkinsmotors.com/?utm_source=ramtow.com&utm_medium=referral&utm_campaign=llms): Inventory connection partner for matching RAM trucks.
+- Perkins RAM Expert: 719-249-2040. Confirm a candidate vehicle's VIN, equipment, axle ratio, GVWR, payload label, hitch equipment, and applicable RAM rating before towing.

@@ -48,6 +48,11 @@ const TRAILER_TARGET_STORAGE_KEY = 'ramTowTrailerTarget';
 
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+const VIN_MODEL_YEAR_CODES = {
+  A: 2010, B: 2011, C: 2012, D: 2013, E: 2014, F: 2015, G: 2016,
+  H: 2017, J: 2018, K: 2019, L: 2020, M: 2021, N: 2022, P: 2023,
+  R: 2024, S: 2025, T: 2026, V: 2027, W: 2028, X: 2029, Y: 2030,
+};
 const VIN_SCAN_FRAME = { left: 0.08, top: 0.24, width: 0.84, height: 0.52 };
 const VIN_SCAN_OCR_INTERVAL_MS = 1400;
 const VIN_TRANSLITERATION = {
@@ -498,6 +503,10 @@ function normalizeManualVin(value) {
     .replace(/[^A-Z0-9]/g, '');
 
   return /^[A-HJ-NPR-Z0-9]{17}$/.test(cleaned) ? cleaned : null;
+}
+
+function getVinModelYear(vin) {
+  return VIN_MODEL_YEAR_CODES[String(vin || '').toUpperCase()[9]] || null;
 }
 
 function transliterateVinCharacter(character) {
@@ -1106,6 +1115,11 @@ async function readVinFromCanvas(frameCanvas) {
 
 async function processDetectedVin(vin) {
   vinInput.value = vin;
+  const modelYear = getVinModelYear(vin);
+  if (modelYear && modelYear < 2023) {
+    showStatus(vinStatus, `VIN Lookup only supports 2023 and newer RAM trucks. Detected ${modelYear}.`, true);
+    return;
+  }
   showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
   vinResults.classList.add('hidden');
 
@@ -1152,6 +1166,11 @@ vinForm.addEventListener('submit', async (event) => {
   }
 
   vinInput.value = vin;
+  const modelYear = getVinModelYear(vin);
+  if (modelYear && modelYear < 2023) {
+    showStatus(vinStatus, `VIN Lookup only supports 2023 and newer RAM trucks. Detected ${modelYear}.`, true);
+    return;
+  }
   showStatus(vinStatus, 'Pulling sticker and matching the RAM charts...');
 
   try {
