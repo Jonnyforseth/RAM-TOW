@@ -14,6 +14,10 @@ const vinScanCloseButton = document.querySelector('#vin-scan-close');
 const vinScanModalStatus = document.querySelector('#vin-scan-modal-status');
 const vinScanVideo = document.querySelector('#vin-scan-video');
 const vinRefinement = document.querySelector('#vin-refinement');
+const vinBedField = document.querySelector('#vin-bed-field');
+const vinBedSelect = document.querySelector('#vin-bed-select');
+const vinRamBoxField = document.querySelector('#vin-rambox-field');
+const vinRamBoxSelect = document.querySelector('#vin-rambox-select');
 const vinAxleField = document.querySelector('#vin-axle-field');
 const vinAxleSelect = document.querySelector('#vin-axle-select');
 const vinGvwrField = document.querySelector('#vin-gvwr-field');
@@ -188,6 +192,7 @@ function renderDetectedSpec(spec) {
     ['Bed', spec.bed],
     ['Axle', spec.axleRatio],
     ['GVWR', spec.gvwr ? `${formatNumber(spec.gvwr)} lb` : null],
+    ['Chart GVWR', !spec.gvwr && spec.inferredGvwr ? `${formatNumber(spec.inferredGvwr)} lb` : null],
     ['Rear Wheels', spec.rearWheels],
   ].filter(([, value]) => value);
 
@@ -210,18 +215,19 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, dete
   }
 
   const showRange = summary?.isRange && Number.isFinite(summary?.min) && Number.isFinite(summary?.max);
+  const resolvedGvwr = detectedSpec?.gvwr || detectedSpec?.inferredGvwr;
   capacityNode.textContent = showRange
     ? formatCapacityRange(summary.min, summary.max).toUpperCase()
     : formatCapacity(kind === 'tow' ? match.maxTow : match.maxPayload).toUpperCase();
 
   const canShowAxle = match.axleRatio && (!showRange || detectedSpec?.axleRatio);
-  const canShowGvwr = match.gvwr && (!showRange || detectedSpec?.gvwr);
+  const canShowGvwr = match.gvwr && (!showRange || resolvedGvwr);
   const canShowGcwr = match.gcwr && !showRange;
   const lines = [
-    `${match.model} ${match.cab} ${match.bed} ${match.drive}`,
+    `${detectedSpec?.year || 'RAM'} ${match.model} ${match.cab} ${match.bed} ${match.drive}`,
     match.engine,
     canShowAxle ? `Axle ${match.axleRatio}` : null,
-    canShowGvwr ? `GVWR ${formatNumber(match.gvwr)} lb` : null,
+    canShowGvwr ? `${detectedSpec?.inferredGvwr && !detectedSpec?.gvwr ? 'Chart GVWR' : 'GVWR'} ${formatNumber(match.gvwr)} lb` : null,
     canShowGcwr ? `GCWR ${formatNumber(match.gcwr)} lb` : null,
     match.trim || match.trimHint ? `Trim hint: ${match.trim || match.trimHint}` : null,
     showRange ? `<span class="metric-note">${escapeHtml(summary.note || 'Confirm the exact axle ratio and door-sticker GVWR before towing.')}</span>` : null,
@@ -299,13 +305,19 @@ function renderVinPerkinsCta(response, spec) {
     return;
   }
 
+  const isUsedInventory = link.inventoryType === 'used';
   const description = [spec?.model ? `RAM ${spec.model}` : null, spec?.engine, spec?.drive, spec?.cab, spec?.bed]
     .filter(Boolean)
     .join(' | ');
-  vinPerkinsCopy.textContent = description
+  vinPerkinsCopy.textContent = isUsedInventory
+    ? `View current used RAM ${spec?.model || ''} inventory at Perkins Motors.`
+    : description
     ? `View current Perkins inventory filtered to this setup: ${description}.`
     : 'View the closest current Perkins inventory filters for this RAM setup.';
   vinPerkinsLink.href = link.url;
+  vinPerkinsLink.textContent = isUsedInventory
+    ? `Shop Used RAM ${spec?.model || ''}s`
+    : 'Find This Setup at Perkins Motors';
   vinPerkinsCta.classList.remove('hidden');
 }
 
@@ -382,16 +394,22 @@ function renderRefinementOptions(select, values, selectedValue, placeholder, for
 }
 
 function renderVinRefinement(response, spec) {
+  const bedOptions = vinOverrideOptions?.bed || [];
+  const ramBoxOptions = vinOverrideOptions?.ramBox || [];
   const axleOptions = vinOverrideOptions?.axleRatio || [];
   const gvwrOptions = vinOverrideOptions?.gvwr || [];
+  const showBed = vinRefinementAvailable && !vinBaseSpec?.bed && bedOptions.length > 1;
+  const showRamBox = vinRefinementAvailable && vinBaseSpec?.ramBox == null && ramBoxOptions.length > 1;
   const showAxle = vinRefinementAvailable && !vinBaseSpec?.axleRatio && axleOptions.length > 1;
   const showGvwr = vinRefinementAvailable && !vinBaseSpec?.gvwr && gvwrOptions.length > 1;
 
-  if (!vinRefinementAvailable || (!showAxle && !showGvwr)) {
+  if (!vinRefinementAvailable || (!showBed && !showRamBox && !showAxle && !showGvwr)) {
     vinRefinement.classList.add('hidden');
     return;
   }
 
+  vinBedField.classList.toggle('hidden', !showBed);
+  vinRamBoxField.classList.toggle('hidden', !showRamBox);
   vinAxleField.classList.toggle('hidden', !showAxle);
   vinGvwrField.classList.toggle('hidden', !showGvwr);
 
@@ -429,6 +447,8 @@ function showVinLookupResponse(response) {
   vinBaseSpec = { ...response.detectedSpec };
   vinOverrideOptions = response.overrideOptions || {};
   vinRefinementAvailable = Boolean(
+    (!vinBaseSpec.bed && vinOverrideOptions.bed?.length > 1) ||
+    (vinBaseSpec.ramBox == null && vinOverrideOptions.ramBox?.length > 1) ||
     (!vinBaseSpec.axleRatio && vinOverrideOptions.axleRatio?.length > 1) ||
     (!vinBaseSpec.gvwr && vinOverrideOptions.gvwr?.length > 1)
   );
@@ -443,6 +463,8 @@ async function refineVinCapacity() {
   const requestId = ++vinRefinementRequest;
   const spec = {
     ...vinBaseSpec,
+    bed: vinBedSelect?.value || null,
+    ramBox: vinRamBoxSelect?.value === '' ? null : vinRamBoxSelect?.value === 'true',
     axleRatio: vinAxleSelect?.value || null,
     gvwr: vinGvwrSelect?.value ? Number(vinGvwrSelect.value) : null,
   };
@@ -1153,7 +1175,7 @@ if (vinScanCloseButton) {
   });
 }
 
-for (const refinementInput of [vinAxleSelect, vinGvwrSelect]) {
+for (const refinementInput of [vinBedSelect, vinRamBoxSelect, vinAxleSelect, vinGvwrSelect]) {
   refinementInput?.addEventListener('change', () => {
     void refineVinCapacity();
   });
@@ -1292,3 +1314,9 @@ window.addEventListener('beforeunload', () => {
   closeVinScanModal();
   void terminateVinOcrWorker();
 });
+  if (showBed) {
+    renderRefinementOptions(vinBedSelect, bedOptions, spec.bed, 'Select box length');
+  }
+  if (showRamBox) {
+    renderRefinementOptions(vinRamBoxSelect, ramBoxOptions, spec.ramBox, 'Select RamBox option', (value) => String(value) === 'true' ? 'With RamBox' : 'Without RamBox');
+  }

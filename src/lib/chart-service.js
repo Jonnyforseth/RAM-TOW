@@ -17,7 +17,7 @@ const chartCache = {
   textsByYear: {},
 };
 
-const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'drive', 'cab', 'bed', 'rearWheels']);
+const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trimStrict']);
 
 function normalize(value) {
   return String(value || '')
@@ -110,6 +110,16 @@ function normalizeRearWheels(value) {
   return null;
 }
 
+function normalizeRamBox(value) {
+  if (value === true || /^(yes|true)$/i.test(String(value || ''))) {
+    return true;
+  }
+  if (value === false || /^(no|false)$/i.test(String(value || ''))) {
+    return false;
+  }
+  return null;
+}
+
 function normalizeEngine(value) {
   const text = normalize(value);
   if (!text) {
@@ -118,8 +128,14 @@ function normalizeEngine(value) {
   if (text.includes('pentastar') || (text.includes('3 6l') && text.includes('v6'))) {
     return '3.6L Pentastar V6 eTorque';
   }
+  if (text.includes('ecodiesel') || (text.includes('3 0l') && text.includes('diesel'))) {
+    return '3.0L EcoDiesel V6';
+  }
   if (text.includes('5 7l') && text.includes('hemi')) {
     return '5.7L HEMI V8 eTorque';
+  }
+  if (text.includes('6 2l') && text.includes('supercharged') && text.includes('hemi')) {
+    return '6.2L Supercharged HEMI V8';
   }
   if (text.includes('hurricane h o') || text.includes('hurricane ho') || (text.includes('hurricane') && text.includes('ho'))) {
     return '3.0L Hurricane HO';
@@ -145,10 +161,13 @@ function cleanSpec(input = {}) {
     cab: normalizeCab(input.cab),
     bed: normalizeBed(input.bed),
     rearWheels: normalizeRearWheels(input.rearWheels),
+    ramBox: normalizeRamBox(input.ramBox),
     engine: normalizeEngine(input.engine),
+    engineVariant: input.engineVariant ? String(input.engineVariant).trim() : null,
     trim: input.trim ? String(input.trim).trim() : null,
     axleRatio: input.axleRatio ? String(input.axleRatio).trim() : null,
     gvwr: toNumber(input.gvwr),
+    inferredGvwr: toNumber(input.inferredGvwr),
     gvwrClassMin: toNumber(input.gvwrClassMin),
     gvwrClassMax: toNumber(input.gvwrClassMax),
   };
@@ -172,7 +191,12 @@ function trimMatches(expected, actual) {
   if (!actual) {
     return false;
   }
-  return normalize(actual).includes(normalize(expected));
+  const normalizedActual = normalize(actual);
+  return String(expected)
+    .split('/')
+    .map((value) => normalize(value))
+    .filter(Boolean)
+    .some((value) => normalizedActual.includes(value) || value.includes(normalizedActual));
 }
 
 function scoreRow(row, spec, isPayload) {
@@ -189,6 +213,12 @@ function scoreRow(row, spec, isPayload) {
     mismatches.push('engine');
   } else if (spec.engine) {
     score += 30;
+  }
+
+  if (spec.engineVariant && row.engineVariant && row.engineVariant !== spec.engineVariant) {
+    mismatches.push('engineVariant');
+  } else if (spec.engineVariant && row.engineVariant === spec.engineVariant) {
+    score += 18;
   }
 
   if (spec.drive && row.drive !== spec.drive) {
@@ -215,6 +245,18 @@ function scoreRow(row, spec, isPayload) {
     score += 18;
   }
 
+  if (spec.ramBox != null && row.ramBox != null && row.ramBox !== spec.ramBox) {
+    mismatches.push('ramBox');
+  } else if (spec.ramBox != null && row.ramBox === spec.ramBox) {
+    score += 12;
+  }
+
+  if (row.trimStrict && spec.trim && !trimMatches(row.trimStrict, spec.trim)) {
+    mismatches.push('trimStrict');
+  } else if (row.trimStrict && spec.trim) {
+    score += 14;
+  }
+
   if (spec.trim && !trimMatches(row.trim || row.trimHint, spec.trim)) {
     mismatches.push('trim');
   } else if (spec.trim && trimMatches(row.trim || row.trimHint, spec.trim)) {
@@ -227,9 +269,10 @@ function scoreRow(row, spec, isPayload) {
     score += 16;
   }
 
-  if (spec.gvwr && row.gvwr && row.gvwr !== spec.gvwr) {
+  const resolvedGvwr = spec.gvwr || spec.inferredGvwr;
+  if (resolvedGvwr && row.gvwr && row.gvwr !== resolvedGvwr) {
     mismatches.push('gvwr');
-  } else if (spec.gvwr && row.gvwr) {
+  } else if (resolvedGvwr && row.gvwr) {
     score += 16;
   }
 
@@ -272,7 +315,7 @@ function hasDisallowedMismatch(scoreInfo) {
 }
 
 function sameMatchFamily(left, right) {
-  return ['model', 'engine', 'drive', 'cab', 'bed', 'rearWheels']
+  return ['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trimStrict']
     .every((key) => (left?.[key] || null) === (right?.[key] || null));
 }
 
@@ -298,6 +341,10 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
+  const trimCompatibleRows = candidateRows.filter((row) => (!row.trimHint && !row.trimStrict) || !spec.trim || trimMatches(row.trim || row.trimHint || row.trimStrict, spec.trim));
+  if (trimCompatibleRows.length) {
+    candidateRows = trimCompatibleRows;
+  }
 
   const selectedDetails = [];
   if (spec.axleRatio) {
@@ -305,9 +352,10 @@ function buildVinCapacitySummary(spec, matches, kind) {
     candidateRows = candidateRows.filter((row) => !row.axleRatio || row.axleRatio === spec.axleRatio);
   }
 
-  if (spec.gvwr) {
-    selectedDetails.push(`GVWR ${formatNumber(spec.gvwr)} lb`);
-    candidateRows = candidateRows.filter((row) => !row.gvwr || row.gvwr === spec.gvwr);
+  const resolvedGvwr = spec.gvwr || spec.inferredGvwr;
+  if (resolvedGvwr) {
+    selectedDetails.push(`${spec.gvwr ? 'GVWR' : `${spec.year || 'RAM'} chart GVWR`} ${formatNumber(resolvedGvwr)} lb`);
+    candidateRows = candidateRows.filter((row) => !row.gvwr || row.gvwr === resolvedGvwr);
   } else {
     const gvwrMin = toNumber(spec.gvwrClassMin);
     const gvwrMax = toNumber(spec.gvwrClassMax);
@@ -345,7 +393,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
   const values = Array.from(new Set(candidateRows.map((row) => row[capacityKey]).filter(Number.isFinite))).sort((a, b) => a - b);
   const axleValues = Array.from(new Set(candidateRows.map((row) => row.axleRatio).filter(Boolean)));
   const gvwrValues = Array.from(new Set(candidateRows.map((row) => row.gvwr).filter(Number.isFinite)));
-  const needsRange = values.length > 1 && (!spec.axleRatio || !spec.gvwr);
+  const needsRange = values.length > 1 && (!spec.axleRatio || !resolvedGvwr);
 
   const summary = {
     isRange: needsRange,
@@ -365,7 +413,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
   if (!spec.axleRatio && axleValues.length > 1) {
     reasons.push('axle ratio');
   }
-  if (!spec.gvwr && gvwrValues.length > 1) {
+  if (!resolvedGvwr && gvwrValues.length > 1) {
     reasons.push('door-sticker GVWR');
   }
 
@@ -406,14 +454,18 @@ function getOverrideOptions(spec, matches) {
     cab: new Set(),
     bed: new Set(),
     rearWheels: new Set(),
+    ramBox: new Set(),
     axleRatio: new Set(),
     gvwr: new Set(),
     trim: new Set(),
   };
 
-  for (const row of [...matches.towMatches, ...matches.payloadMatches]) {
+  const compatibleRows = [...matches.towMatches, ...matches.payloadMatches]
+    .filter((row) => (!row.trimHint && !row.trimStrict) || !spec.trim || trimMatches(row.trim || row.trimHint || row.trimStrict, spec.trim));
+
+  for (const row of compatibleRows) {
     for (const key of Object.keys(options)) {
-      if (row[key]) {
+      if (row[key] != null && row[key] !== '') {
         options[key].add(String(row[key]));
       }
     }
@@ -758,6 +810,7 @@ module.exports = {
   normalizeDrive,
   normalizeEngine,
   normalizeRearWheels,
+  normalizeRamBox,
   reverseLookup,
   towRows,
   payloadRows,

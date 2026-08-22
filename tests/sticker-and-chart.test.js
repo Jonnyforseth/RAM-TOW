@@ -1,12 +1,184 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches } = require('../src/lib/chart-service');
-const { detectGVWR, detectModelYearFromVin, extractDetectedSpec } = require('../src/lib/sticker-service');
+const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches, getOverrideOptions } = require('../src/lib/chart-service');
+const { detectGVWR, detectModelYearFromVin, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
 
-test('detectModelYearFromVin reads 2025 and 2026 model years from the VIN', () => {
+test('detectModelYearFromVin reads 2023 through 2026 model years from the VIN', () => {
+  assert.equal(detectModelYearFromVin('3C6UR5CL4PG612936'), 2023);
+  assert.equal(detectModelYearFromVin('1C6SRFJT9RN198059'), 2024);
   assert.equal(detectModelYearFromVin('1C6SRFHP9SN402052'), 2025);
   assert.equal(detectModelYearFromVin('1C6SRFHP9TN402052'), 2026);
+});
+
+test('2023 2500 standard Cummins uses the correct chart range until door-sticker GVWR is selected', () => {
+  const stickerText = `
+    A 2023 MODEL YEAR RAM 2500 TRADESMAN CREW CAB 4X4 THIS VEHICLE
+    Engine: 6.7L I6 Cummins Turbo Diesel Engine
+    6-Speed Automatic 68RFE Transmission
+    3.73 Axle Ratio
+  `;
+  const detected = extractDetectedSpec('3C6UR5CL4PG612936', stickerText, {
+    Trim: 'Tradesman',
+    ModelYear: '2023',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    BodyCabType: 'Crew/Super Crew/Crew Max',
+    BedType: 'Short',
+    DisplacementL: '6.7',
+    EngineCylinders: '6',
+    FuelTypePrimary: 'Diesel',
+  });
+  const matches = findMatches(detected, { year: 2023 });
+  const overrides = getOverrideOptions(detected, matches);
+
+  assert.equal(detected.year, 2023);
+  assert.equal(detected.engineVariant, 'Standard');
+  assert.equal(detected.bed, null);
+  assert.deepEqual([buildVinCapacitySummary(detected, matches, 'tow').min, buildVinCapacitySummary(detected, matches, 'tow').max], [17210, 18230]);
+  assert.deepEqual([buildVinCapacitySummary(detected, matches, 'payload').min, buildVinCapacitySummary(detected, matches, 'payload').max], [2200, 2300]);
+  assert.deepEqual(overrides.gvwr, ['9900', '10000']);
+
+  const exactSpec = cleanSpec({ ...detected, gvwr: 10000, ramBox: false });
+  const exactMatches = findMatches(exactSpec, { year: 2023 });
+  assert.equal(buildVinCapacitySummary(exactSpec, exactMatches, 'tow').min, 18230);
+  assert.equal(buildVinCapacitySummary(exactSpec, exactMatches, 'payload').min, 2300);
+});
+
+test('truck title cab information takes priority over unrelated sticker text', () => {
+  const detected = extractDetectedSpec('3C6UR5CL4PG612936', `
+    A 2023 MODEL YEAR RAM 2500 TRADESMAN CREW CAB 4X4 THIS VEHICLE
+    Quad lamp package
+    Engine: 6.7L I6 Cummins Turbo Diesel Engine
+  `, {
+    Trim: 'Tradesman',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    BodyCabType: 'Quad Cab',
+  });
+
+  assert.equal(detected.cab, 'Crew');
+});
+
+test('2023 matcher does not cross EcoDiesel, Hurricane, standard HEMI, eTorque, or RamBox rows', () => {
+  const ecoDiesel = cleanSpec({ year: 2023, model: '1500', engine: '3.0L EcoDiesel V6', drive: '4x4', cab: 'Crew', bed: `6'4"`, trim: 'Big Horn' });
+  assert.equal(findMatches(ecoDiesel, { year: 2023 }).towMatches[0].engine, '3.0L EcoDiesel V6');
+
+  const standardHemi = cleanSpec({ year: 2023, model: '1500', engine: '5.7L HEMI V8 eTorque', engineVariant: 'Standard', drive: '4x4', cab: 'Crew', bed: `5'7"`, trim: 'Tradesman' });
+  assert.ok(findMatches(standardHemi, { year: 2023 }).towMatches.every((row) => row.engineVariant !== 'eTorque'));
+
+  const noRamBox = cleanSpec({ year: 2023, model: '2500', engine: '6.4L HEMI V8', drive: '4x4', cab: 'Crew', bed: `6'4"`, rearWheels: 'SRW', ramBox: false, trim: 'Power Wagon' });
+  assert.ok(findMatches(noRamBox, { year: 2023 }).towMatches.every((row) => row.ramBox === false));
+});
+
+test('2023 3500 chart rows keep dual-rear-wheel ratings separate from SRW', () => {
+  const dually = cleanSpec({ year: 2023, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', drive: '4x4', cab: 'Crew', bed: `8'`, rearWheels: 'DRW', trim: 'Tradesman', axleRatio: '4.10', gvwr: 14000 });
+  const matches = findMatches(dually, { year: 2023 });
+
+  assert.equal(matches.towMatches[0].rearWheels, 'DRW');
+  assert.equal(matches.towMatches[0].maxTow, 34070);
+  assert.equal(matches.payloadMatches[0].rearWheels, 'DRW');
+});
+
+test('2023 2500 Rebel diesel uses its separate official Rebel chart row', () => {
+  const spec = cleanSpec({
+    year: 2023,
+    model: '2500',
+    engine: '6.7L Cummins HO',
+    engineVariant: 'Standard',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `6'4"`,
+    rearWheels: 'SRW',
+    trim: 'Power Wagon, Rebel',
+    axleRatio: '3.73',
+  });
+  const matches = findMatches(spec, { year: 2023 });
+
+  assert.equal(matches.towMatches[0].trimStrict, 'Rebel');
+  assert.equal(buildVinCapacitySummary(spec, matches, 'tow').min, 14920);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'payload').min, 1980);
+});
+
+test('2023 2500 Laramie diesel uses the official Crew 6\'4 configuration range', () => {
+  const spec = cleanSpec({
+    year: 2023,
+    model: '2500',
+    engine: '6.7L Cummins HO',
+    engineVariant: 'Standard',
+    drive: '4x4',
+    cab: 'Crew',
+    rearWheels: 'SRW',
+    trim: 'Laramie',
+    axleRatio: '3.73',
+  });
+  const matches = findMatches(spec, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.equal(matches.towMatches[0].trimStrict, 'Laramie');
+  assert.deepEqual([towSummary.min, towSummary.max], [19170, 19980]);
+  assert.deepEqual([payloadSummary.min, payloadSummary.max], [2390, 2480]);
+  assert.deepEqual(getOverrideOptions(spec, matches).gvwr, ['9900', '10000']);
+});
+
+test('2023 3500 Big Horn dually long-box matches its chart drivetrain family', () => {
+  const spec = cleanSpec({
+    year: 2023,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    engineVariant: 'Standard',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `8'`,
+    rearWheels: 'DRW',
+    trim: 'Big Horn',
+    axleRatio: '4.10',
+  });
+  const matches = findMatches(spec, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.equal(matches.towMatches[0].trimStrict, 'Big Horn / Lone Star');
+  assert.equal(towSummary.min, 21680);
+  assert.equal(payloadSummary.min, 5350);
+  assert.equal(payloadSummary.max, 5850);
+  assert.deepEqual(getOverrideOptions(spec, matches).gvwr, ['13500', '14000']);
+});
+
+test('2024 1500 5.7L 4x4 Crew Cab uses the 2024 chart, not the newer chart set', () => {
+  const spec = cleanSpec({
+    year: 2024, model: '1500', engine: '5.7L HEMI V8 eTorque', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.21',
+  });
+  const matches = findMatches(spec, { year: 2024 });
+
+  assert.equal(matches.towMatches[0].maxTow, 8090);
+  assert.equal(matches.payloadMatches[0].maxPayload, 1810);
+});
+
+test('2024 2500 standard-output Cummins keeps the GVWR range and exposes both choices', () => {
+  const spec = cleanSpec({
+    year: 2024, model: '2500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Mega', bed: `6'4"`, axleRatio: '3.73', trim: 'Limited',
+  });
+  const matches = findMatches(spec, { year: 2024 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+  const overrides = getOverrideOptions(spec, matches);
+
+  assert.deepEqual([towSummary.min, towSummary.max], [15840, 15880]);
+  assert.deepEqual([payloadSummary.min, payloadSummary.max], [2020, 2080]);
+  assert.equal(towSummary.isRange, true);
+  assert.deepEqual(overrides.gvwr, ['9900', '10000']);
+});
+
+test('2024 DRW 3500 high-output Cummins uses the inferred 14,000 lb chart GVWR', () => {
+  const inferredGvwr = infer2024ChartGvwr({ year: 2024, model: '3500', rearWheels: 'DRW' });
+  const spec = cleanSpec({
+    year: 2024, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', rearWheels: 'DRW', drive: '4x4', cab: 'Crew', bed: `8'`, axleRatio: '4.10', inferredGvwr,
+  });
+  const matches = findMatches(spec, { year: 2024 });
+
+  assert.equal(inferredGvwr, 14000);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'tow').min, 33960);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'payload').min, 5560);
 });
 
 test('detectGVWR prefers the highest GVW rating when multiple values appear', () => {
@@ -200,6 +372,64 @@ test('findMatches keeps the 2025 gas 2500 crew long-bed row on the 2025 chart se
   assert.equal(matches.payloadMatches[0].cab, 'Crew');
   assert.equal(matches.payloadMatches[0].bed, `8'`);
   assert.equal(matches.payloadMatches[0].maxPayload, 3110);
+});
+
+test('2025 3500 Cummins Crew Cab long-box 4x4 SRW uses the chart-derived 12,300 GVWR row', () => {
+  const inferredGvwr = infer2025ChartGvwr({
+    year: 2025,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    rearWheels: 'SRW',
+    cab: 'Crew',
+    bed: `8'`,
+    drive: '4x4',
+  });
+  const spec = cleanSpec({
+    year: 2025,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    rearWheels: 'SRW',
+    cab: 'Crew',
+    bed: `8'`,
+    drive: '4x4',
+    axleRatio: '3.42',
+    inferredGvwr,
+  });
+  const matches = findMatches(spec, { year: 2025 });
+
+  assert.equal(inferredGvwr, 12300);
+  assert.equal(matches.towMatches[0].maxTow, 25180);
+  assert.equal(matches.payloadMatches[0].maxPayload, 4310);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'tow').isRange, false);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'payload').isRange, false);
+});
+
+test('2025 3500 Cummins Crew Cab long-box DRW uses the 14,000 GVWR row', () => {
+  const inferredGvwr = infer2025ChartGvwr({
+    year: 2025,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    rearWheels: 'DRW',
+    cab: 'Crew',
+    bed: `8'`,
+    drive: '4x4',
+  });
+  const spec = cleanSpec({
+    year: 2025,
+    model: '3500',
+    engine: '6.7L Cummins HO',
+    rearWheels: 'DRW',
+    cab: 'Crew',
+    bed: `8'`,
+    drive: '4x4',
+    axleRatio: '3.42',
+    inferredGvwr,
+  });
+  const matches = findMatches(spec, { year: 2025 });
+
+  assert.equal(inferredGvwr, 14000);
+  assert.equal(matches.towMatches[0].maxTow, 33890);
+  assert.equal(matches.payloadMatches[0].maxPayload, 5530);
 });
 
 test('buildVinCapacitySummary returns a range when the sticker does not pin down axle ratio or exact GVWR', () => {

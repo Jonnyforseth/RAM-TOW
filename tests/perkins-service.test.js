@@ -10,6 +10,26 @@ const {
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
 } = require('../src/lib/perkins-service');
+const { getVinInventoryLink } = require('../src/lib/inventory-link-service');
+
+test('VIN lookups for 2025 and older route to the matching used RAM model inventory', async () => {
+  const link = await getVinInventoryLink({ year: 2025, model: '2500', engine: '6.7L Cummins HO' }, {});
+  const url = new URL(link.url);
+
+  assert.equal(link.inventoryType, 'used');
+  assert.equal(url.searchParams.get('condition'), 'used');
+  assert.equal(url.searchParams.get('make'), 'Ram');
+  assert.equal(url.searchParams.get('model'), '2500');
+  assert.equal(url.searchParams.get('utm_campaign'), 'vin_lookup_used');
+});
+
+test('2026 VIN links retain their configuration-specific inventory lookup', async () => {
+  const link = await getVinInventoryLink({ year: 2026, model: '1500', engine: '5.7L HEMI V8 eTorque', drive: '4x4', cab: 'Crew', bed: `5'7"` }, {
+    towMatches: [{ model: '1500', engine: '5.7L HEMI V8 eTorque', drive: '4x4', cab: 'Crew', bed: `5'7"` }],
+  });
+
+  assert.notEqual(link?.inventoryType, 'used');
+});
 
 test('buildFilteredInventoryUrl keeps a VIN setup in Perkins filters and adds VIN UTM attribution', () => {
   const inventoryLink = buildFilteredInventoryUrl(

@@ -12,6 +12,8 @@ const { DEFAULT_CHART_YEAR, SUPPORTED_CHART_YEARS } = require('../data/chart-dat
 const WINDOW_STICKER_BASE_URL = 'https://www.chrysler.com/hostd/windowsticker/getWindowStickerPdf.do?vin=';
 const NHTSA_BASE_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/';
 const VIN_MODEL_YEAR_MAP = {
+  P: 2023,
+  R: 2024,
   S: 2025,
   T: 2026,
 };
@@ -148,7 +150,9 @@ function detectGVWR(stickerText) {
 }
 
 function detectCab(stickerText, decoded) {
+  const titleCab = String(stickerText || '').match(/RAM\s+(?:1500|2500|3500)[\s\S]{0,140}?\b(CREW|MEGA|QUAD|REG(?:ULAR)?)(?:\s+CAB)?\b/i)?.[1];
   return (
+    normalizeCab(titleCab) ||
     normalizeCab(stickerText) ||
     normalizeCab(decoded.CabType) ||
     normalizeCab(decoded.BodyCabType) ||
@@ -158,7 +162,7 @@ function detectCab(stickerText, decoded) {
   );
 }
 
-function detectBed(vin, stickerText, decoded, model, cab) {
+function detectBed(vin, stickerText, decoded, model, cab, year) {
   const stickerBed = normalizeBed(stickerText);
   if (stickerBed) {
     return stickerBed;
@@ -171,6 +175,11 @@ function detectBed(vin, stickerText, decoded, model, cab) {
   }
   if (decodedBed === `5'7"` || decodedBed === `6'4"`) {
     return decodedBed;
+  }
+  // Older HD VIN decodes say only "Short" or "Long" for Crew Cabs. That is
+  // insufficient for the 2023 source chart, so leave it selectable.
+  if (year === 2023 && model !== '1500' && /^(short|long)$/i.test(decodedBedType)) {
+    return cab === 'Mega' ? `6'4"` : cab === 'Regular' ? `8'` : null;
   }
   if (/^short$/i.test(decodedBedType)) {
     if (model === '1500') {
@@ -254,10 +263,16 @@ function deriveEngineFromDecoded(decoded = {}) {
     if (Math.abs(displacement - 5.7) < 0.12 && cylinders === 8) {
       return '5.7L HEMI V8 eTorque';
     }
+    if (Math.abs(displacement - 6.2) < 0.12 && cylinders === 8) {
+      return '6.2L Supercharged HEMI V8';
+    }
     if (Math.abs(displacement - 3.6) < 0.12 && cylinders === 6) {
       return '3.6L Pentastar V6 eTorque';
     }
     if (Math.abs(displacement - 3.0) < 0.12 && cylinders === 6) {
+      if (fuelText.includes('diesel')) {
+        return '3.0L EcoDiesel V6';
+      }
       if (/rho|limited|high output|h\/?o/i.test(`${engineText} ${trimText}`)) {
         return '3.0L Hurricane HO';
       }
@@ -279,6 +294,45 @@ function detectEngine(stickerText, decoded) {
   return normalizeEngine(engineLine) || normalizeEngine(stickerText) || deriveEngineFromDecoded(decoded);
 }
 
+function detectDieselVariant(stickerText, decoded) {
+  const source = `${stickerText || ''} ${decoded?.EngineHP_to || ''} ${decoded?.TransmissionStyle || ''}`;
+  return /high[\s-]*output|aisin/i.test(source) ? 'HO' : 'Standard';
+}
+
+function detectHemiVariant(stickerText) {
+  return /etorque|bsg/i.test(String(stickerText || '')) ? 'eTorque' : 'Standard';
+}
+
+function detectRamBox(stickerText) {
+  return /ram\s*box/i.test(String(stickerText || '')) ? true : null;
+}
+
+function infer2024ChartGvwr({ year, model, rearWheels }) {
+  return year === 2024 && model === '3500' && rearWheels === 'DRW' ? 14000 : null;
+}
+
+// The 2025 HD chart has a single SRW Crew Cab long-box Cummins row per drive.
+// Chrysler stickers often omit GVWR for that configuration, but DRW is stated.
+function infer2025ChartGvwr({ year, model, engine, rearWheels, cab, bed, drive }) {
+  if (year !== 2025 || model !== '3500' || engine !== '6.7L Cummins HO' || cab !== 'Crew' || bed !== `8'`) {
+    return null;
+  }
+
+  if (rearWheels === 'DRW') {
+    return 14000;
+  }
+
+  if (rearWheels === 'SRW' && drive === '4x4') {
+    return 12300;
+  }
+
+  if (rearWheels === 'SRW' && drive === '4x2') {
+    return 12000;
+  }
+
+  return null;
+}
+
 function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const year = resolveLookupYear(vin, stickerText, decoded, options.chartYear);
   const model = detectModel(vin, stickerText);
@@ -286,18 +340,33 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const trim = detectTrim(stickerText, decoded);
   const stickerAvailable = hasUsableStickerText(stickerText);
   const decodedGvwrBounds = detectDecodedGvwrBounds(decoded.GVWR) || detectDecodedGvwrBounds(decoded.GVWR_to);
+  const drive = normalizeDrive(stickerText) || normalizeDrive(decoded.DriveType);
+  const bed = detectBed(vin, stickerText, decoded, model, cab, year);
+  const rearWheels = detectRearWheels(vin, stickerText, model);
+  const engine = detectEngine(stickerText, decoded);
+  const stickerGvwr = detectGVWR(stickerText) || detectDecodedGvwr(decoded.GVWR) || detectDecodedGvwr(decoded.GVWR_to);
+  const inferredGvwr = stickerGvwr
+    ? null
+    : infer2024ChartGvwr({ year, model, rearWheels }) || infer2025ChartGvwr({ year, model, engine, rearWheels, cab, bed, drive });
   const spec = cleanSpec({
     vin,
     year,
     model,
-    drive: normalizeDrive(stickerText) || normalizeDrive(decoded.DriveType),
+    drive,
     cab,
-    bed: detectBed(vin, stickerText, decoded, model, cab),
-    rearWheels: detectRearWheels(vin, stickerText, model),
-    engine: detectEngine(stickerText, decoded),
+    bed,
+    rearWheels,
+    ramBox: detectRamBox(stickerText),
+    engine,
+    engineVariant: (year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
+      ? detectDieselVariant(stickerText, decoded)
+      : year === 2023 && engine === '5.7L HEMI V8 eTorque'
+        ? detectHemiVariant(stickerText)
+        : null,
     trim,
     axleRatio: detectAxleRatio(stickerText),
-    gvwr: detectGVWR(stickerText) || detectDecodedGvwr(decoded.GVWR) || detectDecodedGvwr(decoded.GVWR_to),
+    gvwr: stickerGvwr,
+    inferredGvwr,
   });
 
   return {
@@ -307,6 +376,8 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     trim,
     gvwrClassMin: decodedGvwrBounds?.min || null,
     gvwrClassMax: decodedGvwrBounds?.max || null,
+    inferredGvwr: inferredGvwr || null,
+    gvwrSource: inferredGvwr ? `${year} RAM chart configuration rule` : stickerGvwr ? 'window sticker' : null,
     stickerAvailable,
     stickerTitle: stickerText.match(/(?:A\s+)?20\d{2}\s+MODEL YEAR\s+([\s\S]+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   };
@@ -334,6 +405,8 @@ module.exports = {
   detectModelYearFromSticker,
   detectModelYearFromVin,
   extractDetectedSpec,
+  infer2024ChartGvwr,
+  infer2025ChartGvwr,
   hasUsableStickerText,
   lookupVin,
   resolveLookupYear,

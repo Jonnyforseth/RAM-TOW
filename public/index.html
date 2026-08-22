@@ -47,6 +47,7 @@
         <section class="card card-primary">
           <div class="card-head">
             <h2>VIN LOOKUP</h2>
+          <p class="vin-year-note">VIN Lookup only supports 2023 and newer RAM trucks.</p>
           </div>
 
           <form id="vin-form" class="stack">
@@ -103,8 +104,16 @@
 
             <section id="vin-refinement" class="vin-refinement hidden" aria-live="polite">
               <h3>Confirm Exact Rating</h3>
-              <p>RAM&rsquo;s window sticker did not confirm every chart detail. Select the axle ratio and/or GVWR from the door sticker to narrow this result.</p>
+              <p>RAM&rsquo;s window sticker did not confirm every chart detail. Use the truck or door sticker to narrow this result.</p>
               <div class="field-grid">
+                <label id="vin-bed-field" class="field hidden">
+                  <span>Box Length</span>
+                  <select id="vin-bed-select"></select>
+                </label>
+                <label id="vin-rambox-field" class="field hidden">
+                  <span>RamBox</span>
+                  <select id="vin-rambox-select"></select>
+                </label>
                 <label id="vin-axle-field" class="field hidden">
                   <span>Axle Ratio</span>
                   <select id="vin-axle-select"></select>

@@ -1,7 +1,29 @@
+const {
+  HD_PAYLOAD_ROWS_2024,
+  HD_TOW_ROWS_2024,
+  LIGHT_DUTY_PAYLOAD_ROWS_2024,
+  LIGHT_DUTY_TOW_ROWS_2024,
+} = require('./chart-year-2024');
+const {
+  HD_PAYLOAD_ROWS_2023,
+  HD_TOW_ROWS_2023,
+  LIGHT_DUTY_PAYLOAD_ROWS_2023,
+  LIGHT_DUTY_TOW_ROWS_2023,
+} = require('./chart-year-2023');
+
 const DEFAULT_CHART_YEAR = 2026;
-const SUPPORTED_CHART_YEARS = [2025, 2026];
+// Add a model year here, its two source PDFs, and its row data to extend support.
+const SUPPORTED_CHART_YEARS = [2023, 2024, 2025, 2026];
 
 const PDF_PATHS_BY_YEAR = {
+  2023: {
+    ram1500: 'C:/Users/Jonat/Downloads/Ram_LD DT_Weight & Tow_MY23.pdf',
+    ramHD: 'C:/Users/Jonat/Downloads/2023_RAM_2500_3500_HD_TowChart.pdf',
+  },
+  2024: {
+    ram1500: 'C:/Users/Jonat/Downloads/24MY_Ram_1500_Customer_PayTow_2.7.pdf',
+    ramHD: 'C:/Users/Jonat/Downloads/my24_Ram_HD_Customer_TowPayChart_3.2.pdf',
+  },
   2025: {
     ram1500: 'C:/Users/Jonat/Downloads/25MY_Ram_1500_Customer_PayTow_2.0.pdf',
     ramHD: 'C:/Users/Jonat/Downloads/my25_Ram_HD_Customer_TowPayChart_3.65.pdf',
@@ -117,13 +139,16 @@ const HD_TOW_ROWS_2025 = [
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 28110, maxTow: 18820 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 27820, maxTow: 19900 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 27820, maxTow: 19930 },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11800, gcwr: 31820, maxTow: 23550, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11830, gcwr: 34000, maxTow: 26080, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 12300, gcwr: 33610, maxTow: 25180, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 12300, gcwr: 32720, maxTow: 24080, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 45000, maxTow: 36610, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 42800, maxTow: 33890, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 41950, maxTow: 32880, confidence: 'medium' },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.42', gvwr: 11500, gcwr: 31850, maxTow: 23950 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 11800, gcwr: 31820, maxTow: 23550 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11830, gcwr: 34000, maxTow: 26080 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.42', gvwr: 12000, gcwr: 33530, maxTow: 25490 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 12300, gcwr: 32720, maxTow: 24080 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 12300, gcwr: 33610, maxTow: 25180 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 42800, maxTow: 33890 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 41950, maxTow: 32880 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', axleRatio: '3.42', gvwr: 14000, gcwr: 43040, maxTow: 34490 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 14000, gcwr: 45000, maxTow: 36610 },
 ];
 
 const HD_PAYLOAD_ROWS_2025 = [
@@ -146,12 +171,16 @@ const HD_PAYLOAD_ROWS_2025 = [
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 11040, maxPayload: 3300 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 11040, maxPayload: 3160 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', gvwr: 11040, maxPayload: 2900 },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 11500, maxPayload: 3970, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 11830, maxPayload: 4040, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 12000, maxPayload: 4310, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', gvwr: 12300, maxPayload: 4100, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 5530, confidence: 'medium' },
-  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 14000, maxPayload: 5380, confidence: 'medium' },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 11800, maxPayload: 3970 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 11830, maxPayload: 4350 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 11500, maxPayload: 4040 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 12000, maxPayload: 4400 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 12300, maxPayload: 4310 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', gvwr: 12300, maxPayload: 4100 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Regular', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 6050 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x2', gvwr: 14000, maxPayload: 5890 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', gvwr: 14000, maxPayload: 5530 },
+  { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'DRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', gvwr: 14000, maxPayload: 5370 },
 ];
 
 const LIGHT_DUTY_TOW_ROWS_2026 = [
@@ -362,6 +391,16 @@ const GOOSENECK_REQUIRED_OVER = {
 };
 
 const CHART_DATA_BY_YEAR = {
+  2023: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2023],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2023, ...HD_TOW_ROWS_2023],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2023, ...HD_PAYLOAD_ROWS_2023],
+  },
+  2024: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2024],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2024, ...HD_TOW_ROWS_2024],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2024, ...HD_PAYLOAD_ROWS_2024],
+  },
   2025: {
     pdfPaths: PDF_PATHS_BY_YEAR[2025],
     towRows: [...LIGHT_DUTY_TOW_ROWS_2025, ...HD_TOW_ROWS_2025],

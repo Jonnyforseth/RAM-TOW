@@ -303,6 +303,18 @@ body::before {
   color: var(--ink);
 }
 
+.vin-year-note {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 7px 10px;
+  border-left: 3px solid var(--red);
+  background: rgba(176, 58, 34, 0.07);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .stack {
   display: grid;
   gap: 14px;
