@@ -375,6 +375,28 @@ test('2026 Hurricane HO Limited stays on the Limited chart row instead of includ
   assert.equal(payloadSummary.min, 1390);
 });
 
+test('2026 Hurricane HO Tungsten uses the matching Limited chart configuration, not the RHO row', () => {
+  const spec = cleanSpec({
+    year: 2026,
+    model: '1500',
+    engine: '3.0L Hurricane HO',
+    trim: 'Tungsten',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `5'7"`,
+  });
+
+  const matches = findMatches(spec, { year: 2026 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, matches, 'payload');
+
+  assert.deepEqual(matches.towMatches.map((row) => row.trim), ['Limited']);
+  assert.equal(towSummary.isRange, false);
+  assert.equal(towSummary.min, 9240);
+  assert.equal(payloadSummary.isRange, false);
+  assert.equal(payloadSummary.min, 1390);
+});
+
 test('findMatches keeps the 2025 gas 2500 crew long-bed row on the 2025 chart set', () => {
   const spec = cleanSpec({
     year: 2025,

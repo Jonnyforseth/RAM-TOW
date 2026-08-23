@@ -199,6 +199,16 @@ function trimMatches(expected, actual) {
     .some((value) => normalizedActual.includes(value) || value.includes(normalizedActual));
 }
 
+function rowTrimMatches(row, actual) {
+  const aliases = Array.isArray(row.trimAliases) ? row.trimAliases : [row.trimAliases];
+  const constraints = [row.trim, row.trimHint, row.trimStrict, ...aliases].filter(Boolean);
+  return constraints.length === 0 || constraints.some((value) => trimMatches(value, actual));
+}
+
+function rowHasTrimConstraint(row) {
+  return Boolean(row.trim || row.trimHint || row.trimStrict || row.trimAliases);
+}
+
 function scoreRow(row, spec, isPayload) {
   let score = 0;
   const mismatches = [];
@@ -257,9 +267,9 @@ function scoreRow(row, spec, isPayload) {
     score += 14;
   }
 
-  if (spec.trim && !trimMatches(row.trim || row.trimHint, spec.trim)) {
+  if (spec.trim && !rowTrimMatches(row, spec.trim)) {
     mismatches.push('trim');
-  } else if (spec.trim && trimMatches(row.trim || row.trimHint, spec.trim)) {
+  } else if (spec.trim && rowTrimMatches(row, spec.trim)) {
     score += 12;
   }
 
@@ -342,8 +352,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
   const trimCompatibleRows = candidateRows.filter((row) => {
-    const rowTrim = row.trim || row.trimHint || row.trimStrict;
-    return !rowTrim || !spec.trim || trimMatches(rowTrim, spec.trim);
+    return !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
   });
   if (trimCompatibleRows.length) {
     candidateRows = trimCompatibleRows;
@@ -465,8 +474,7 @@ function getOverrideOptions(spec, matches) {
 
   const compatibleRows = [...matches.towMatches, ...matches.payloadMatches]
     .filter((row) => {
-      const rowTrim = row.trim || row.trimHint || row.trimStrict;
-      return !rowTrim || !spec.trim || trimMatches(rowTrim, spec.trim);
+      return !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
     });
 
   for (const row of compatibleRows) {

@@ -57,8 +57,8 @@ const LIGHT_DUTY_TOW_ROWS_2025 = [
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.92', gcwr: 17000, maxTow: 11480 },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.92', gcwr: 17000, maxTow: 11260 },
   { model: '1500', engine: '3.0L Hurricane HO', trim: 'RHO', cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15160, maxTow: 8380 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15873, maxTow: 9340 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.92', gcwr: 16134, maxTow: 9920 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15873, maxTow: 9340 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.92', gcwr: 16134, maxTow: 9920 },
 ];
 
 const LIGHT_DUTY_PAYLOAD_ROWS_2025 = [
@@ -74,8 +74,8 @@ const LIGHT_DUTY_PAYLOAD_ROWS_2025 = [
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1890 },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `6'4"`, drive: '4x2', gvwr: 6900, maxPayload: 1820 },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1790 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1340 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1380 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1340 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1380 },
   { model: '1500', engine: '3.0L Hurricane HO', trim: 'RHO', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7800, maxPayload: 1520 },
 ];
 
@@ -209,8 +209,8 @@ const LIGHT_DUTY_TOW_ROWS_2026 = [
   { model: '1500', engine: '5.7L HEMI V8 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x2', axleRatio: '3.92', gcwr: 17000, maxTow: 11320 },
   { model: '1500', engine: '5.7L HEMI V8 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15850, maxTow: 9590 },
   { model: '1500', engine: '3.0L Hurricane HO', trim: 'RHO', cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15160, maxTow: 8360 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15420, maxTow: 9240 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.92', gcwr: 16220, maxTow: 10000 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `5'7"`, drive: '4x4', axleRatio: '3.92', gcwr: 15420, maxTow: 9240 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.92', gcwr: 16220, maxTow: 10000 },
 ];
 
 const LIGHT_DUTY_PAYLOAD_ROWS_2026 = [
@@ -226,8 +226,8 @@ const LIGHT_DUTY_PAYLOAD_ROWS_2026 = [
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1750 },
   { model: '1500', engine: '5.7L HEMI V8 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x2', gvwr: 6900, maxPayload: 1650 },
   { model: '1500', engine: '5.7L HEMI V8 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1630 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1390 },
-  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1450 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7100, maxPayload: 1390 },
+  { model: '1500', engine: '3.0L Hurricane HO', trim: 'Limited', trimAliases: ['Tungsten'], cab: 'Crew', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1450 },
   { model: '1500', engine: '3.0L Hurricane HO', trim: 'RHO', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 7800, maxPayload: 1490 },
 ];
 
