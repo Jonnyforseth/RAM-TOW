@@ -4,6 +4,18 @@ const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
 const publicDirectory = path.join(projectRoot, 'public');
+const googleMeasurementId = 'G-TG2FVCTBJ1';
+const analyticsMarkup = `<!-- RAM TOW GA START -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=${googleMeasurementId}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '${googleMeasurementId}', { anonymize_ip: true });
+    </script>
+    <!-- RAM TOW GA END -->
+    `;
 
 // A fresh deployment version prevents a browser or proxy from reusing an older asset.
 const assetVersion = crypto
@@ -27,7 +39,9 @@ for (const htmlPath of findHtmlFiles(publicDirectory)) {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const updatedHtml = html
     .replace(/(\/styles\.css)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
-    .replace(/(\/(?:app|trailer-fit-results)\.js)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`);
+    .replace(/(\/(?:app|trailer-fit-results)\.js)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
+    .replace(/<!-- RAM TOW GA START -->[\s\S]*?<!-- RAM TOW GA END -->\s*/g, '')
+    .replace(/<\/head>/i, `${analyticsMarkup}</head>`);
 
   if (updatedHtml !== html) {
     fs.writeFileSync(htmlPath, updatedHtml);
