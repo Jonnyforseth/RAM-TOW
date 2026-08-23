@@ -8,5 +8,8 @@
   "assets": {
     "directory": "public",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "GA_MEASUREMENT_ID": "G-TG2FVCTBJ1"
   }
 }

@@ -46,6 +46,12 @@ const reverseInputs = [
 
 const TRAILER_TARGET_STORAGE_KEY = 'ramTowTrailerTarget';
 
+function trackAnalytics(eventName, parameters = {}) {
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', eventName, parameters);
+  }
+}
+
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
 const VIN_MODEL_YEAR_CODES = {
@@ -458,6 +464,11 @@ function showVinLookupResponse(response) {
     (!vinBaseSpec.gvwr && vinOverrideOptions.gvwr?.length > 1)
   );
   renderVinResponse(response, vinBaseSpec);
+  trackAnalytics('vin_lookup_complete', {
+    chart_year: Number(response.chartYear) || undefined,
+    ram_model: String(vinBaseSpec.model || 'unknown'),
+    chart_match: Boolean(response.towSummary?.value || response.towMatch),
+  });
 }
 
 async function refineVinCapacity() {
@@ -1210,6 +1221,10 @@ reverseForm.addEventListener('submit', async (event) => {
   }
 
   saveTrailerTarget(payload);
+  trackAnalytics('trailer_fit_started', {
+    hitch_type: payload.hitchType,
+    model_preference: payload.modelPreference || 'any',
+  });
   const params = new URLSearchParams({
     trailerWeight: String(Math.round(payload.trailerWeight)),
     tongueWeight: String(Math.round(payload.tongueWeight)),

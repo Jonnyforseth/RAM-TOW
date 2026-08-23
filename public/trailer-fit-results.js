@@ -4,6 +4,12 @@ const summaryNode = document.querySelector('#fit-summary');
 const insightsNode = document.querySelector('#fit-insights');
 const resultsNode = document.querySelector('#fit-results');
 
+function trackAnalytics(eventName, parameters = {}) {
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', eventName, parameters);
+  }
+}
+
 const TRUCK_PROFILES = {
   '1500': {
     images: [
@@ -38,8 +44,8 @@ const TRUCK_PROFILES = {
   },
   '2500': {
     images: [
-      'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-2500/overview/desktop/my26-ram-2500-overview-featurepanel-01-desktop.jpg.image.1440.jpg',
       'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-2500/overview/desktop/my26-ram-2500-vlp-gallery-expanded-01-desktop-v1.jpg',
+      'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-2500/overview/desktop/my26-ram-2500-vlp-gallery-expanded-02-desktop-v1.jpg',
       'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-2500/overview/desktop/my26-ram-2500-vlp-gallery-expanded-04-desktop-v1.jpg',
     ],
     imageAlt: 'RAM 2500 Heavy Duty truck',
@@ -60,8 +66,8 @@ const TRUCK_PROFILES = {
   },
   '3500': {
     images: [
-      'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-3500/overview/desktop/my26-ram-3500-overview-featurepanel-01-desktop.jpg.image.1440.jpg',
       'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-3500/overview/desktop/my26-ram-3500-vlp-gallery-expanded-01-desktop-v2.jpg',
+      'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-3500/overview/desktop/my26-ram-3500-vlp-gallery-expanded-02-desktop.jpg',
       'https://www.ramtrucks.com/content/dam/fca-brands/na/ramtrucks/en_us/2026/ram-3500/overview/desktop/my26-ram-3500-vlp-gallery-expanded-04-desktop-v2.jpg',
     ],
     imageAlt: 'RAM 3500 Heavy Duty truck',
@@ -300,6 +306,11 @@ async function loadRecommendations() {
     }
 
     const rows = payload.results || [];
+    trackAnalytics('trailer_fit_results_loaded', {
+      hitch_type: target.hitchType,
+      model_preference: target.modelPreference || 'any',
+      recommendation_count: rows.length,
+    });
     if (!rows.length) {
       resultsNode.innerHTML = `
         <article class="fit-empty-state">

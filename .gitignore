@@ -1,3 +1,5 @@
 node_modules/
 .tmp/
 .wrangler/
+public/ram-towing-guides/*/
+public/ram-towing-questions/
