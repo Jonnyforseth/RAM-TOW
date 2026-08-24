@@ -1,5 +1,5 @@
 (() => {
-  const menu = document.createElement('div');
+  const menu = document.createElement('header');
   menu.className = 'site-global-nav';
   menu.innerHTML = `
     <button class="site-menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu">

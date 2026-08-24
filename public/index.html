@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=4061d26824da">
+    <link rel="stylesheet" href="/styles.css?v=e93d3c7b064c">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -38,8 +38,11 @@
         }
       }
     </script>
-  <!-- RAM TOW NAV START -->
-    <script defer src="/site-nav.js?v=4061d26824da"></script>
+  <!-- RAM TOW SITE IDENTITY START -->
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://ramtow.com/#website","name":"RAM Tow","url":"https://ramtow.com/","description":"VIN-based RAM towing capacity, payload, and trailer-fit research using model-year RAM towing charts."},{"@type":"Organization","@id":"https://ramtow.com/#organization","name":"RAM Tow","url":"https://ramtow.com/","logo":"https://ramtow.com/assets/ram-tow-logo.png"}]}</script>
+    <!-- RAM TOW SITE IDENTITY END -->
+    <!-- RAM TOW NAV START -->
+    <script defer src="/site-nav.js?v=e93d3c7b064c"></script>
     <!-- RAM TOW NAV END -->
     <!-- RAM TOW GA START -->
     <!-- Google tag (gtag.js) -->
@@ -48,7 +51,11 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-Q5JT6C5WN5', { anonymize_ip: true });
+      gtag('config', 'G-Q5JT6C5WN5', { anonymize_ip: true, send_page_view: false });
+      gtag('event', 'page_view', {
+        page_location: window.location.origin + window.location.pathname,
+        page_title: document.title
+      });
     </script>
     <!-- RAM TOW GA END -->
     </head>
@@ -199,7 +206,7 @@
           <a href="/disclaimer">Disclaimer</a>
           <a href="/llms.txt">LLMS.txt</a>
           <a href="/sitemap.xml">Sitemap</a>
-        </nav>
+        <a href="/privacy">Privacy</a></nav>
       </footer>
     </div>
     <div id="vin-scan-modal" class="scanner-modal hidden" aria-hidden="true">
@@ -220,6 +227,6 @@
     </div>
     <script src="/vendor/zxing-browser.min.js"></script>
     <script src="/vendor/tesseract.min.js"></script>
-    <script src="/app.js?v=4061d26824da"></script>
+    <script src="/app.js?v=e93d3c7b064c"></script>
   </body>
 </html>

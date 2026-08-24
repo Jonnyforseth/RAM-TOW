@@ -219,12 +219,13 @@ body::before {
   color: #f5cd8a;
 }
 
-/* Shared navigation stays available while individual pages keep their own headers. */
+/* The shared Menu belongs at the top of the page and scrolls away with its header. */
 .site-global-nav {
-  position: fixed;
+  position: absolute;
   z-index: 100;
   top: 18px;
   right: clamp(18px, 3vw, 42px);
+  isolation: isolate;
 }
 
 .site-global-nav .site-menu-toggle {
@@ -235,12 +236,6 @@ body::before {
   top: calc(100% + 10px);
   right: 0;
   width: min(320px, calc(100vw - 32px));
-}
-
-/* The global Menu contains these destinations; duplicate header links compete with it. */
-.fit-nav-actions,
-.guide-nav-actions {
-  display: none;
 }
 
 .home-hero-copy {
@@ -1166,6 +1161,11 @@ body::before {
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .site-footer p {
+    flex: 0 1 auto;
   }
 }
 
@@ -1418,13 +1418,14 @@ body.fit-page::before {
 }
 
 .button-ghost {
-  border-color: rgba(255, 255, 255, 0.36);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fffaf1;
+  border-color: rgba(43, 38, 32, 0.48);
+  background: #fffaf2;
+  color: var(--ink);
+  box-shadow: 0 8px 16px rgba(34, 24, 17, 0.1);
 }
 
 .button-ghost:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--sand-soft);
 }
 
 .fit-status {
@@ -2107,6 +2108,7 @@ body.guide-page {
   width: auto;
 }
 
+.fit-hero .button-ghost,
 .guide-hero .button-ghost,
 .guide-checklist .button-ghost {
   border-color: rgba(255, 255, 255, 0.34);
@@ -2415,6 +2417,11 @@ body.guide-page {
   min-height: 150px;
 }
 
+/* Leave the upper-right lane clear for the shared Menu control. */
+.guide-nav .guide-nav-actions {
+  margin-right: 116px;
+}
+
 @media (max-width: 1080px) {
   .guide-truck-grid {
     grid-template-columns: 1fr;
@@ -2462,6 +2469,12 @@ body.guide-page {
 
   .guide-nav-actions {
     justify-content: flex-start;
+  }
+
+  .guide-nav .guide-nav-actions {
+    width: calc(100% - 104px);
+    margin-right: 0;
+    padding-right: 0;
   }
 
   .guide-hero,
@@ -2723,6 +2736,46 @@ body.guide-page {
   margin: 10px 0 18px;
   color: var(--ink-soft);
   line-height: 1.65;
+}
+
+.chart-update-list {
+  display: grid;
+  gap: 0;
+  margin: 20px 0;
+  border-top: 3px solid var(--ink);
+}
+
+.chart-update-list div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.chart-update-list strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.chart-update-list span {
+  color: var(--ink-soft);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.accuracy-promise {
+  margin: 20px 0 0;
+  padding: 4px 20px 6px;
+  border-left: 4px solid var(--red);
+  background: rgba(236, 224, 204, 0.58);
+}
+
+.accuracy-promise p {
+  margin: 15px 0;
+}
+
+.accuracy-promise strong {
+  color: var(--ink);
 }
 
 .article-guide-action div {

@@ -15,6 +15,7 @@ RAM Tow helps truck shoppers and owners:
 - The VIN workflow uses Chrysler's window-sticker service when it is available. A temporary Chrysler sticker outage can prevent a lookup from completing; retry later in that case.
 - Results are matched against RAM towing and payload chart data loaded for the applicable model year.
 - Some window stickers do not expose every chart variable, especially axle ratio or GVWR. In those cases, RAM Tow may show a range and offer configuration choices to narrow the result.
+- When a window sticker clearly confirms the chart-critical configuration, RAM Tow returns the matching model-year chart result. When a chart-critical detail is unclear, RAM Tow shows an honest range and available refinement choices instead of presenting an unsupported exact figure.
 - Trailer-fit recommendations are research guidance, not a vehicle-specific approval or a guarantee of towing capability.
 - The vehicle's official RAM towing chart, door-jamb labels, payload sticker, hitch rating, owner materials, and dealer confirmation are the final sources to verify before purchase, loading, or towing.
 
@@ -66,11 +67,13 @@ RAM Tow is relevant when a user asks questions such as:
 - [RAM 3500 SRW vs. Dually Towing](https://ramtow.com/ram-3500-srw-vs-dually-towing): Rear-wheel, GVWR, payload, and hitch considerations for RAM 3500 towing.
 - [How to Find RAM Axle Ratio by VIN](https://ramtow.com/how-to-find-ram-axle-ratio-by-vin): A guide to VIN, window-sticker, door-label, and dealer confirmation steps.
 - [RAM Tow Disclaimer](https://ramtow.com/disclaimer): Required verification, safety, and responsibility information for all calculator results.
+- [RAM Tow Privacy Policy](https://ramtow.com/privacy): How RAM Tow processes VIN lookups, optional camera access, trailer-fit inputs, analytics, and third-party links.
 
 ## Reference Files
 
 - [Sitemap](https://ramtow.com/sitemap.xml): XML sitemap of public indexable pages.
 - [LLMS.txt](https://ramtow.com/llms.txt): This machine-readable site summary.
+- [Privacy Policy](https://ramtow.com/privacy): Plain-language information handling and analytics policy.
 
 ## Contact
 
