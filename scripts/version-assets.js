@@ -5,6 +5,7 @@ const path = require('path');
 const projectRoot = path.resolve(__dirname, '..');
 const publicDirectory = path.join(projectRoot, 'public');
 const googleMeasurementId = 'G-FXRKJ81DXP';
+const adsensePublisherId = 'ca-pub-5332705058579031';
 const analyticsMarkup = `<!-- RAM TOW GA START -->
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=${googleMeasurementId}"></script>
@@ -19,6 +20,10 @@ const analyticsMarkup = `<!-- RAM TOW GA START -->
       });
     </script>
     <!-- RAM TOW GA END -->
+    `;
+const adsenseMarkup = `<!-- RAM TOW ADSENSE START -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsensePublisherId}" crossorigin="anonymous"></script>
+    <!-- RAM TOW ADSENSE END -->
     `;
 
 // A fresh deployment version prevents a browser or proxy from reusing an older asset.
@@ -111,9 +116,10 @@ for (const htmlPath of findHtmlFiles(publicDirectory)) {
     .replace(/(\/(?:app|trailer-fit-results|site-nav)\.js)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
     .replace(/<!-- RAM TOW NAV START -->[\s\S]*?<!-- RAM TOW NAV END -->\s*/g, '')
     .replace(/<!-- RAM TOW GA START -->[\s\S]*?<!-- RAM TOW GA END -->\s*/g, '')
+    .replace(/<!-- RAM TOW ADSENSE START -->[\s\S]*?<!-- RAM TOW ADSENSE END -->\s*/g, '')
     .replace(/<!-- RAM TOW SITE IDENTITY START -->[\s\S]*?<!-- RAM TOW SITE IDENTITY END -->\s*/g, '')
     .replace(/<!-- RAM TOW ARTICLE SCHEMA START -->[\s\S]*?<!-- RAM TOW ARTICLE SCHEMA END -->\s*/g, '')
-    .replace(/<\/head>/i, `${articleMarkup}${siteIdentityMarkup}${navigationMarkup}${analyticsMarkup}</head>`);
+    .replace(/<\/head>/i, `${articleMarkup}${siteIdentityMarkup}${navigationMarkup}${analyticsMarkup}${adsenseMarkup}</head>`);
   const htmlWithPrivacyLink = addPrivacyLink(updatedHtml);
 
   if (htmlWithPrivacyLink !== html) {
