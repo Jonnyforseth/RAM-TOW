@@ -4,7 +4,7 @@ const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
 const publicDirectory = path.join(projectRoot, 'public');
-const googleMeasurementId = 'G-Q5JT6C5WN5';
+const googleMeasurementId = 'G-FXRKJ81DXP';
 const analyticsMarkup = `<!-- RAM TOW GA START -->
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=${googleMeasurementId}"></script>
