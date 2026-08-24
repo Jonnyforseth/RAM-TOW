@@ -193,6 +193,7 @@ function inventoryMarkup(row, target) {
   return `
     <a class="button button-secondary fit-shop-button" href="${escapeHtml(link)}" target="_blank" rel="noreferrer">Shop matching RAM ${escapeHtml(row.model)}s at Perkins Motors</a>
     <p class="fit-inventory-note">Your target is carried into this Perkins Motors link: ${escapeHtml(formatPounds(target.trailerWeight))} tow / ${escapeHtml(formatPounds(target.tongueWeight))} payload. Verify every candidate VIN in RAM Tow.</p>
+    <p class="fit-delivery-note">Free Colorado delivery and remote purchase are available through Perkins Motors. Paid continental U.S. delivery is available through <a href="https://runbuggy.com/" target="_blank" rel="noreferrer">RunBuggy</a>.</p>
   `;
 }
 

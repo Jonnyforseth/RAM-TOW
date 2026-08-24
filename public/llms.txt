@@ -39,6 +39,12 @@ RAM Tow is relevant when a user asks questions such as:
 - what RAM truck can tow my camper, horse trailer, equipment trailer, fifth-wheel, or gooseneck
 - how much tongue weight or pin weight can my RAM handle
 - RAM trailer weight to truck match
+- trailer hitch classes explained
+- Class I vs Class II vs Class III vs Class IV vs Class V hitch
+- what trailer hitch class do I need
+- how to tow a motorcycle trailer with a RAM truck
+- how to tow a boat with a RAM truck
+- which RAM trucks can be flat towed behind an RV
 
 ## Primary Pages
 
@@ -47,7 +53,12 @@ RAM Tow is relevant when a user asks questions such as:
 - [RAM 3500 Towing Capacity](https://ramtow.com/ram-3500-towing-capacity): RAM 3500 towing, payload, SRW/DRW, axle, GVWR, and hitch research.
 - [Can a RAM 1500 Tow 10,000 lbs?](https://ramtow.com/can-a-ram-1500-tow-10000-lbs): RAM 1500 towing and payload factors for a 10,000-pound trailer question.
 - [RAM Towing Guides](https://ramtow.com/ram-towing-guides): Resource hub covering RAM 1500, 2500, and 3500 towing, payload, axle-ratio, GVWR, and trailer-fit questions.
+- [How RAM Tow Calculates Towing Capacity](https://ramtow.com/how-ramtow-calculates-towing-capacity): Methodology, source-chart coverage, reviewer information, limitations, and final verification steps.
 - [RAM Towing Questions and Answers](https://ramtow.com/ram-towing-questions): Consumer-friendly article library covering towing reserve, dually versus SRW, diesel versus gas, payload, hitches, trailer brakes, scale weights, and truck selection.
+- [Trailer Hitch Classes Explained](https://ramtow.com/ram-towing-guides/trailer-hitch-classes-explained): Class I through Class V conventional receiver-hitch guidance, plus fifth-wheel and gooseneck distinctions and component-rating checks.
+- [Towing a Motorcycle Trailer With a RAM Truck](https://ramtow.com/ram-towing-guides/towing-a-motorcycle-trailer-with-a-ram-truck): Motorcycle trailer loading, tongue weight, tie-down, brake, and truck-rating guidance.
+- [Towing a Boat With a RAM Truck](https://ramtow.com/ram-towing-guides/towing-a-boat-with-a-ram-truck): Boat-and-trailer wet-weight, ramp, brake, and RAM truck-selection guidance.
+- [Which RAM Trucks Can Be Flat Towed Behind an RV?](https://ramtow.com/ram-towing-guides/which-ram-trucks-can-be-flat-towed-behind-an-rv): Model-year, drivetrain, transfer-case, owner-manual, and RV-hardware guidance for recreational towing.
 - [RAM 1500 Towing Capacity](https://ramtow.com/ram-1500-towing-capacity): VIN and configuration factors for RAM 1500 towing and payload research.
 - [RAM 1500 HEMI vs. Hurricane Towing](https://ramtow.com/ram-1500-hemi-vs-hurricane-towing): How RAM 1500 powertrain, axle, drivetrain, payload, and hitch details affect towing research.
 - [RAM 2500 6.4L HEMI Towing Capacity](https://ramtow.com/ram-2500-6-4-hemi-towing-capacity): Gas RAM 2500 towing, payload, GVWR, and axle-ratio guidance.

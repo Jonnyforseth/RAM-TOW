@@ -23,6 +23,10 @@ const assetVersion = crypto
   .update(`${Date.now()}-${Math.random()}-${process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || ''}`)
   .digest('hex')
   .slice(0, 12);
+const navigationMarkup = `<!-- RAM TOW NAV START -->
+    <script defer src="/site-nav.js?v=${assetVersion}"></script>
+    <!-- RAM TOW NAV END -->
+    `;
 
 function findHtmlFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -39,9 +43,10 @@ for (const htmlPath of findHtmlFiles(publicDirectory)) {
   const html = fs.readFileSync(htmlPath, 'utf8');
   const updatedHtml = html
     .replace(/(\/styles\.css)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
-    .replace(/(\/(?:app|trailer-fit-results)\.js)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
+    .replace(/(\/(?:app|trailer-fit-results|site-nav)\.js)(?:\?v=(?:__ASSET_VERSION__|[a-f0-9]{12}))?/g, `$1?v=${assetVersion}`)
+    .replace(/<!-- RAM TOW NAV START -->[\s\S]*?<!-- RAM TOW NAV END -->\s*/g, '')
     .replace(/<!-- RAM TOW GA START -->[\s\S]*?<!-- RAM TOW GA END -->\s*/g, '')
-    .replace(/<\/head>/i, `${analyticsMarkup}</head>`);
+    .replace(/<\/head>/i, `${navigationMarkup}${analyticsMarkup}</head>`);
 
   if (updatedHtml !== html) {
     fs.writeFileSync(htmlPath, updatedHtml);

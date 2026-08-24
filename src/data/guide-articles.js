@@ -162,6 +162,52 @@ const GUIDE_ARTICLES = [
     model: "",
   },
   {
+    slug: "trailer-hitch-classes-explained",
+    title: "Trailer Hitch Classes Explained: Class I, II, III, IV, and V",
+    description: "A plain-English guide to Class I through Class V conventional trailer hitches, what they are commonly used for, and why the lowest-rated towing component controls.",
+    lead: "Trailer-hitch classes are a quick way to describe the general strength category of a conventional receiver hitch. They can help you understand the kind of trailer a vehicle may be equipped to handle, but they never replace the ratings printed on the exact truck, receiver, ball mount, ball, coupler, and trailer.",
+    why: "A hitch class describes the receiver system, not a blanket approval for the whole towing combination. The truck can be limited by its tow rating, payload, receiver label, ball mount, hitch ball, trailer coupler, tires, axle ratings, or trailer brakes. The lowest applicable rating is always the limit.",
+    sections: [
+      {
+        heading: "Class I and Class II: light-duty conventional towing",
+        paragraphs: [
+          "Class I and Class II receivers are commonly found on passenger vehicles, crossovers, and smaller SUVs. They are generally intended for light utility trailers, small personal-watercraft trailers, bike racks, and other lighter loads.",
+          "These classes are not a substitute for checking a vehicle's tow rating. Even if a receiver is installed, the vehicle manufacturer may have a lower towing limit or may require specific equipment, wiring, brakes, or a particular ball mount.",
+        ],
+      },
+      {
+        heading: "Class III: the common starting point for truck receiver towing",
+        paragraphs: [
+          "Class III is a common conventional receiver category for pickups and larger SUVs. It is often used for medium-size utility, boat, cargo, and travel trailers when the complete vehicle and hitch system are rated for the load.",
+          "A Class III receiver does not mean every trailer in that broad category is a match. Loaded trailer weight and tongue weight must fit the truck's published tow and payload ratings, and trailer brakes and weight-distributing equipment may be required for the specific combination.",
+        ],
+      },
+      {
+        heading: "Class IV and Class V: heavier conventional receiver setups",
+        paragraphs: [
+          "Class IV and Class V receivers are typically associated with higher-capacity pickup and heavy-duty applications. They may be used for heavier conventional trailers, but the receiver class alone does not establish the allowed trailer weight or tongue weight.",
+          "For a RAM truck, check the receiver label and the model-year RAM chart for the exact configuration. A heavier receiver cannot increase the truck's published tow, payload, GVWR, GAWR, or GCWR limits. A weight-distributing setup must also be approved by the truck, receiver, hitch, and trailer manufacturers.",
+        ],
+      },
+      {
+        heading: "Fifth-wheel and gooseneck hitches are different systems",
+        paragraphs: [
+          "Class I through Class V labels refer to conventional receiver hitches at the rear of the vehicle. Fifth-wheel and gooseneck hitches mount in the truck bed and carry pin weight over or near the rear axle, so they are evaluated with different equipment and payload considerations.",
+          "For a fifth-wheel or gooseneck, use the trailer's real loaded pin weight, not only total trailer weight. Verify the bed-mounted hitch, truck payload sticker, rear axle rating, GVWR, and the exact RAM tow-chart configuration before towing.",
+        ],
+      },
+      {
+        heading: "How to use a hitch class safely",
+        paragraphs: [
+          "Start with the trailer's loaded weight and actual tongue or pin weight. Then identify the ratings stamped or labeled on the receiver, ball mount, hitch ball, coupler, and trailer. Compare those ratings with the truck's owner information and the applicable RAM tow chart.",
+          "If any component is rated lower than the others, use that lower number. RAM Tow can help compare a supported RAM VIN and trailer load, but the final decision should be confirmed with the truck, trailer, and hitch manufacturers or a qualified RAM expert.",
+        ],
+      },
+    ],
+    check: "Choose conventional towing in the trailer calculator for a receiver-hitch trailer, or choose fifth-wheel or gooseneck for a bed-mounted connection. Then run the specific RAM VIN and confirm the receiver label, hitch components, payload sticker, trailer brake setup, and all applicable manufacturer ratings.",
+    model: "",
+  },
+  {
     slug: "do-i-need-trailer-brakes",
     title: "When Does a Trailer Need Its Own Brakes?",
     description: "Understand why trailer brakes, brake controllers, trailer weight, state requirements, and manufacturer instructions matter when planning a RAM towing setup.",
@@ -206,8 +252,106 @@ const GUIDE_ARTICLES = [
     check: "Use the trailer calculator with fifth-wheel or gooseneck selected. Start with the trailer's actual loaded pin weight, then confirm the candidate HD truck's bed equipment, payload sticker, GVWR, GAWR, and chart capacity.",
     model: "2500",
   },
+  {
+    slug: "towing-a-motorcycle-trailer-with-a-ram-truck",
+    title: "How to Tow a Motorcycle Trailer With a RAM Truck",
+    description: "A practical guide to motorcycle trailer towing with a RAM truck, including loaded trailer weight, tie-downs, tongue weight, trailer brakes, and tow-vehicle checks.",
+    lead: "Motorcycle trailers are often lighter than travel trailers, but a safe setup still depends on the real loaded weight, how the motorcycles are secured, trailer balance, tire condition, and the ratings of every towing component.",
+    why: "A light trailer can still become unstable if the motorcycles are loaded unevenly, the tongue weight is too low or too high, or the tie-down and trailer equipment are not suited to the load. The trailer's loaded condition, not its empty weight, is what matters on the road.",
+    sections: [
+      {
+        heading: "Start with the complete loaded weight",
+        paragraphs: [
+          "Include the trailer, each motorcycle, fuel, gear, ramps, spare tire, toolboxes, coolers, and any cargo carried on the trailer. A small open trailer can gain meaningful weight once multiple motorcycles and equipment are loaded.",
+          "Use the trailer's loaded weight and actual tongue weight in the RAM Tow calculator. Then compare the result with the exact truck's tow rating, payload label, receiver label, ball mount, ball, coupler, and trailer ratings.",
+        ],
+      },
+      {
+        heading: "Loading and tie-downs affect trailer behavior",
+        paragraphs: [
+          "Load motorcycles according to the trailer manufacturer's instructions and keep the load centered left to right. Use motorcycle-specific tie-down points and secure the motorcycle at approved locations. A loose, shifting, or uneven load can change tongue weight and handling while you drive.",
+          "Check tie-down straps, wheel chocks, hooks, anchor points, and the trailer deck before every trip. Do not assume a strap that held a bike on a short local drive is suitable for highway speed, rough roads, or a long-distance trip.",
+        ],
+      },
+      {
+        heading: "Do not overlook trailer brakes, lights, and tires",
+        paragraphs: [
+          "Trailer-brake requirements depend on the trailer's weight, the places you travel, and manufacturer instructions. Confirm working lights, safety chains, breakaway equipment where required, wheel bearings, tire age and pressure, and a properly sized hitch ball before leaving.",
+          "A motorcycle trailer may be within a truck's maximum tow rating while still needing attention to the trailer's own ratings and maintenance. The truck and trailer must both be ready for the trip.",
+        ],
+      },
+    ],
+    check: "Use the loaded trailer weight and measured tongue weight in Trailer Match. For a specific RAM truck, run the VIN and confirm the receiver, payload label, hitch equipment, trailer brakes, and all trailer and motorcycle tie-down instructions before towing.",
+    model: "1500",
+  },
+  {
+    slug: "towing-a-boat-with-a-ram-truck",
+    title: "How to Tow a Boat With a RAM Truck",
+    description: "Learn how to choose and verify a RAM truck for boat towing, including wet weight, trailer weight, fuel, gear, tongue weight, ramps, brakes, and launch-day preparation.",
+    lead: "A boat's advertised dry weight rarely tells the whole towing story. The practical number includes the trailer, fuel, batteries, safety gear, anchors, coolers, water-sports equipment, and other items that travel with the boat.",
+    why: "Boats are frequently towed in changing weather and then launched on wet ramps. The full trailer load, correct tongue weight, trailer brakes, ramp traction, and the exact truck's tow and payload ratings all deserve attention before a purchase or a trip.",
+    sections: [
+      {
+        heading: "Use wet weight, not brochure weight",
+        paragraphs: [
+          "Build the number from the boat, trailer, fuel, batteries, motor, anchor, electronics, coolers, life jackets, fishing gear, and anything stored on board. A scale ticket is the best confirmation because boat-and-trailer combinations often travel much heavier than the advertised hull weight.",
+          "Enter the loaded trailer number and measured tongue weight in RAM Tow. A trailer that is comfortably within tow rating still needs enough remaining payload for its tongue weight, passengers, cargo, hitch equipment, and accessories in the truck.",
+        ],
+      },
+      {
+        heading: "Prepare for the ramp as well as the highway",
+        paragraphs: [
+          "A wet boat ramp changes the traction and control required to launch and retrieve a boat. Four-wheel drive can help in suitable conditions, but it does not change the truck's published towing or payload rating. Follow ramp rules, use a spotter when helpful, and avoid sudden acceleration or braking.",
+          "Before launching, check the trailer lights, winch strap, safety chains, coupler, tires, wheel bearings, drain plug, and any required trailer brakes. After saltwater use, follow the boat and trailer manufacturers' cleaning and maintenance guidance.",
+        ],
+      },
+      {
+        heading: "Choose a truck for the real use case",
+        paragraphs: [
+          "Many boats can fit a properly configured RAM 1500, while larger cabin boats, heavy trailers, long distances, and greater payload demands can point toward a RAM 2500 or 3500. The truck badge is only a starting point; engine, axle ratio, drivetrain, cab, bed, equipment, and payload label change the final answer.",
+          "If the boat is near a rating or you tow in mountains, with a full cabin, or with significant cargo, leave practical capacity margin and confirm the exact VIN before relying on an advertised maximum.",
+        ],
+      },
+    ],
+    check: "Use the complete loaded boat-and-trailer weight plus actual tongue weight in Trailer Match. Then run the RAM VIN you are considering and verify the tow chart, payload sticker, receiver label, trailer brake equipment, and ramp-ready tire condition.",
+    model: "1500",
+  },
+  {
+    slug: "which-ram-trucks-can-be-flat-towed-behind-an-rv",
+    title: "Which RAM Trucks Can Be Flat Towed Behind an RV?",
+    description: "Understand which RAM 1500, RAM 2500, and RAM 3500 configurations may be approved for flat towing behind a motorhome, and why the exact model-year owner manual and transfer case matter.",
+    lead: "Flat towing, also called dinghy towing or four-down towing, is not determined by the RAM badge alone. The truck must have the exact drivetrain and transfer-case procedure authorized in its model-year owner manual.",
+    why: "Using the wrong setup can damage the transmission or transfer case. For the current 2023 through 2026 RAM models covered by RAM Tow, the owner-manual distinction is generally between two-wheel-drive trucks, which are not approved for four-down flat towing, and eligible four-wheel-drive trucks with a transfer case Neutral procedure.",
+    sections: [
+      {
+        heading: "The short answer for current RAM trucks",
+        paragraphs: [
+          "The 2026 RAM 1500 owner manual and the 2026 RAM 2500/3500 owner manual identify recreational-towing instructions for four-wheel-drive models with a transfer case Neutral position. When the exact manual's procedure is followed, those 4WD configurations can be towed with all four wheels on the ground.",
+          "Do not treat that as approval for every RAM truck. Two-wheel-drive models are not approved for four-down flat towing in the current manuals, and a truck without the correct transfer-case Neutral procedure should be transported as the owner manual directs instead.",
+        ],
+      },
+      {
+        heading: "The required setup matters",
+        paragraphs: [
+          "For the 2026 4WD manuals, recreational towing calls for the transfer case in Neutral, the transmission in Park, and towing in the forward direction. The manuals also warn against dolly towing a 4WD truck, because having only one axle on the ground can damage drivetrain components.",
+          "Follow the full model-year procedure exactly, including the transfer-case Neutral verification steps, electric parking-brake instructions, steering guidance, tow-bar/base-plate requirements, supplemental braking system requirements, and all applicable state or provincial rules. Do not improvise the procedure from a forum, a different model year, or a different vehicle.",
+        ],
+      },
+      {
+        heading: "Check the motorhome and towing hardware too",
+        paragraphs: [
+          "The motorhome needs adequate tow rating, receiver rating, combined-weight capacity, and braking capability for the RAM truck. A base plate, tow bar, safety cables, wiring, and supplemental braking system must be rated and installed for the exact combination.",
+          "A flat-towable truck can still be the wrong choice if the motorhome or towing hardware is not rated for its actual curb weight and equipment. Ask a qualified RV and RAM professional to confirm the full motorhome-to-truck setup before purchase or travel.",
+        ],
+      },
+    ],
+    check: "Before flat towing any RAM, open the owner manual for the exact model year and drivetrain, confirm the truck has the authorized transfer-case Neutral procedure, and follow every listed step. VIN Lookup can help identify the RAM's configuration, but it is not a substitute for the owner's manual or an RV-towing professional.",
+    referenceLinks: [
+      { url: 'https://vehicleinfo.mopar.com/assets/publications/en-us-ca/2026/Ram/1500/103960_26_DT_OM_EN_USC_DIGITAL_E1_V1.pdf', label: 'Read the 2026 RAM 1500 owner manual' },
+      { url: 'https://vehicleinfo.mopar.com/assets/publications/en-us-ca/2026/Ram/2500_3500/104491_26_DJD2_OM_EN_USC_DIGITAL_E2.pdf', label: 'Read the 2026 RAM 2500/3500 owner manual' },
+    ],
+    model: "",
+  },
 ];
 
 module.exports = { GUIDE_ARTICLES };
-
-

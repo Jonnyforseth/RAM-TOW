@@ -7,6 +7,7 @@ const STATIC_LANDING_PAGES = new Map([
   ['/ram-2500-towing-capacity', '/ram-2500-towing-capacity/index.html'],
   ['/ram-3500-towing-capacity', '/ram-3500-towing-capacity/index.html'],
   ['/can-a-ram-1500-tow-10000-lbs', '/can-a-ram-1500-tow-10000-lbs/index.html'],
+  ['/how-ramtow-calculates-towing-capacity', '/how-ramtow-calculates-towing-capacity/index.html'],
   ['/trailer-fit', '/trailer-fit/index.html'],
   ['/ram-towing-guides', '/ram-towing-guides/index.html'],
   ['/ram-towing-questions', '/ram-towing-questions/index.html'],
