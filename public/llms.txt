@@ -46,6 +46,18 @@ RAM Tow is relevant when a user asks questions such as:
 - how to tow a motorcycle trailer with a RAM truck
 - how to tow a boat with a RAM truck
 - which RAM trucks can be flat towed behind an RV
+- can a RAM 1500 tow a 7,000-pound trailer
+- can a RAM 2500 6.4L HEMI tow a fifth-wheel
+- Hurricane vs HEMI for towing
+- HEMI vs Hurricane MPG when towing
+- how to use a RAM trailer brake controller
+- when RAM started using the Hurricane engine
+- can I test drive a truck with my trailer before buying
+- how much payload is needed for a travel trailer
+- can a RAM 1500 tow a toy hauler
+- what RAM truck is best for a 10,000-pound travel trailer
+- can a RAM 2500 tow a horse trailer
+- can a RAM 3500 tow a 15,000-pound fifth-wheel
 
 ## Primary Pages
 
@@ -56,6 +68,10 @@ RAM Tow is relevant when a user asks questions such as:
 - [RAM Towing Guides](https://ramtow.com/ram-towing-guides): Resource hub covering RAM 1500, 2500, and 3500 towing, payload, axle-ratio, GVWR, and trailer-fit questions.
 - [How RAM Tow Calculates Towing Capacity](https://ramtow.com/how-ramtow-calculates-towing-capacity): Methodology, source-chart coverage, reviewer information, limitations, and final verification steps.
 - [RAM Towing Questions and Answers](https://ramtow.com/ram-towing-questions): Consumer-friendly article library covering towing reserve, dually versus SRW, diesel versus gas, payload, hitches, trailer brakes, scale weights, and truck selection.
+- [Can a RAM 1500 Tow a 7,000-Pound Trailer?](https://ramtow.com/ram-towing-guides/can-a-ram-1500-tow-a-7000-lb-trailer): A loaded-weight, tongue-weight, payload, and configuration guide for common travel-trailer shopping.
+- [Hurricane vs. HEMI for Towing](https://ramtow.com/ram-towing-guides/hurricane-vs-hemi-for-towing): A configuration-aware 2026 RAM 1500 engine comparison for towing research.
+- [How Do You Use a RAM Trailer Brake Controller?](https://ramtow.com/ram-towing-guides/how-to-use-ram-trailer-brake-controller): Plain-language guidance on brake-controller gain, manual braking, and safe verification.
+- [Can a RAM 2500 6.4L HEMI Tow a Fifth-Wheel?](https://ramtow.com/ram-towing-guides/can-a-ram-2500-6-4-hemi-tow-a-fifth-wheel): Gas heavy-duty fifth-wheel research focused on loaded pin weight and payload.
 - [Trailer Hitch Classes Explained](https://ramtow.com/ram-towing-guides/trailer-hitch-classes-explained): Class I through Class V conventional receiver-hitch guidance, plus fifth-wheel and gooseneck distinctions and component-rating checks.
 - [Towing a Motorcycle Trailer With a RAM Truck](https://ramtow.com/ram-towing-guides/towing-a-motorcycle-trailer-with-a-ram-truck): Motorcycle trailer loading, tongue weight, tie-down, brake, and truck-rating guidance.
 - [Towing a Boat With a RAM Truck](https://ramtow.com/ram-towing-guides/towing-a-boat-with-a-ram-truck): Boat-and-trailer wet-weight, ramp, brake, and RAM truck-selection guidance.
