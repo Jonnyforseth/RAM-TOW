@@ -4,11 +4,289 @@ const assert = require('node:assert/strict');
 const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches, getOverrideOptions } = require('../src/lib/chart-service');
 const { detectGVWR, detectModelYearFromVin, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
 
-test('detectModelYearFromVin reads 2023 through 2026 model years from the VIN', () => {
+test('detectModelYearFromVin reads 2019 through 2026 model years from the VIN', () => {
+  assert.equal(detectModelYearFromVin('1C6RR7KT1KS000000'), 2019);
+  assert.equal(detectModelYearFromVin('1C6SRFFT0LN000000'), 2020);
+  assert.equal(detectModelYearFromVin('1C6RR7KT1MS000000'), 2021);
+  assert.equal(detectModelYearFromVin('1C6SRFJT6NN288764'), 2022);
   assert.equal(detectModelYearFromVin('3C6UR5CL4PG612936'), 2023);
   assert.equal(detectModelYearFromVin('1C6SRFJT9RN198059'), 2024);
   assert.equal(detectModelYearFromVin('1C6SRFHP9SN402052'), 2025);
   assert.equal(detectModelYearFromVin('1C6SRFHP9TN402052'), 2026);
+});
+
+test('2019 RAM 1500 keeps standard HEMI and eTorque chart rows separate', () => {
+  const standard = cleanSpec({
+    year: 2019, model: '1500', engine: '5.7L HEMI V8 eTorque', engineVariant: 'Standard', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 7100,
+  });
+  const eTorque = cleanSpec({ ...standard, engineVariant: 'eTorque' });
+
+  assert.equal(buildVinCapacitySummary(standard, findMatches(standard, { year: 2019 }), 'tow').min, 11340);
+  assert.equal(buildVinCapacitySummary(eTorque, findMatches(eTorque, { year: 2019 }), 'tow').min, 11250);
+});
+
+test('2019 RAM 1500 Classic keeps six-speed and eight-speed HEMI rows distinct', () => {
+  const eightSpeed = cleanSpec({
+    year: 2019, model: '1500 Classic', engine: '5.7L HEMI V8', transmission: '8-Speed', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 6900,
+  });
+  const sixSpeed = cleanSpec({ ...eightSpeed, transmission: '6-Speed' });
+
+  assert.equal(buildVinCapacitySummary(eightSpeed, findMatches(eightSpeed, { year: 2019 }), 'tow').min, 10220);
+  assert.equal(buildVinCapacitySummary(sixSpeed, findMatches(sixSpeed, { year: 2019 }), 'tow').min, 10180);
+});
+
+test('2019 RAM 1500 Classic detects typographic-dash transmission text from a sticker', () => {
+  const detected = extractDetectedSpec('1C6RR7TT0KS612208', `
+    2019 MODEL YEAR RAM 1500 CLASSIC BIG HORN CREW CAB 4X4
+    Engine: 5.7L HEMI V8 engine
+    Transmission: 8–speed automatic transmission
+  `, {
+    ModelYear: '2019',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    DisplacementL: '5.7',
+    EngineCylinders: '8',
+  });
+
+  assert.equal(detected.transmission, '8-Speed');
+});
+
+test('2019 RAM 2500 keeps gas and Cummins chart rows distinct', () => {
+  const gas = cleanSpec({
+    year: 2019, model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '4.10', gvwr: 10000,
+  });
+  const diesel = cleanSpec({
+    year: 2019, model: '2500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Mega', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 10000,
+  });
+
+  assert.equal(buildVinCapacitySummary(gas, findMatches(gas, { year: 2019 }), 'tow').min, 16910);
+  assert.equal(buildVinCapacitySummary(diesel, findMatches(diesel, { year: 2019 }), 'tow').min, 16520);
+});
+
+test('2019 RAM 3500 keeps SRW and DRW Cummins rows distinct', () => {
+  const srw = cleanSpec({
+    year: 2019, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `8'`, ramBox: false, axleRatio: '3.73', gvwr: 12300,
+  });
+  const drwHo = cleanSpec({
+    year: 2019, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', rearWheels: 'DRW', drive: '4x4', cab: 'Crew', bed: `8'`, ramBox: false, axleRatio: '4.10', gvwr: 14000,
+  });
+
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2019 }), 'tow').min, 20110);
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2019 }), 'payload').min, 4580);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2019 }), 'tow').min, 34130);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2019 }), 'payload').min, 5600);
+});
+
+test('2019 Canadian-format stickers recognize Regular Cab and the pounds value in GVWR', () => {
+  const detected = extractDetectedSpec('3C63R3BLXKG662766', `
+    2019 MODEL YEAR RAM 3500 BIG HORN REG CAB 4X4
+    Engine: 6.7L Cummins I-6 HO turbocharged diesel engine
+    Transmission: 6-speed AISIN heavy-duty automatic transmission
+    3.73 rear axle ratio
+    GVWR: 5352 kg (11,800 lb)
+  `, {
+    ModelYear: '2019',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    DisplacementL: '6.7',
+    EngineCylinders: '6',
+    FuelTypePrimary: 'Diesel',
+  });
+
+  assert.equal(detected.cab, 'Regular');
+  assert.equal(detected.bed, `8'`);
+  assert.equal(detected.gvwr, 11800);
+  assert.equal(buildVinCapacitySummary(detected, findMatches(detected, { year: 2019 }), 'tow').min, 26440);
+});
+
+test('2020 RAM 1500 keeps standard HEMI and eTorque chart rows separate', () => {
+  const standard = cleanSpec({
+    year: 2020, model: '1500', engine: '5.7L HEMI V8 eTorque', engineVariant: 'Standard', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 7100,
+  });
+  const eTorque = cleanSpec({ ...standard, engineVariant: 'eTorque' });
+
+  assert.equal(buildVinCapacitySummary(standard, findMatches(standard, { year: 2020 }), 'tow').min, 11290);
+  assert.equal(buildVinCapacitySummary(eTorque, findMatches(eTorque, { year: 2020 }), 'tow').min, 11080);
+});
+
+test('2020 RAM 1500 Classic stays on DS rows', () => {
+  const spec = cleanSpec({
+    year: 2020, model: '1500 Classic', engine: '5.7L HEMI V8', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 6900,
+  });
+
+  assert.equal(buildVinCapacitySummary(spec, findMatches(spec, { year: 2020 }), 'tow').min, 10260);
+  assert.equal(buildVinCapacitySummary(spec, findMatches(spec, { year: 2020 }), 'payload').min, 1560);
+});
+
+test('2020 RAM 2500 preserves gas, Cummins, drive, and GVWR rows', () => {
+  const gas = cleanSpec({
+    year: 2020, model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '4.10', gvwr: 10000,
+  });
+  const diesel = cleanSpec({
+    year: 2020, model: '2500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Mega', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 9900,
+  });
+
+  assert.equal(buildVinCapacitySummary(gas, findMatches(gas, { year: 2020 }), 'tow').min, 16880);
+  assert.equal(buildVinCapacitySummary(diesel, findMatches(diesel, { year: 2020 }), 'tow').min, 14690);
+  assert.equal(buildVinCapacitySummary(diesel, findMatches(diesel, { year: 2020 }), 'payload').min, 1940);
+});
+
+test('2020 RAM 3500 keeps SRW, DRW, standard Cummins, and HO Cummins distinct', () => {
+  const srw = cleanSpec({
+    year: 2020, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 11800,
+  });
+  const drwHo = cleanSpec({
+    year: 2020, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', rearWheels: 'DRW', drive: '4x4', cab: 'Crew', bed: `8'`, axleRatio: '4.10', gvwr: 14000,
+  });
+
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2020 }), 'tow').min, 20220);
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2020 }), 'payload').min, 4190);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2020 }), 'tow').min, 34110);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2020 }), 'payload').min, 5590);
+});
+
+test('2021 RAM 1500 keeps standard HEMI and eTorque chart rows separate', () => {
+  const standard = cleanSpec({
+    year: 2021, model: '1500', engine: '5.7L HEMI V8 eTorque', engineVariant: 'Standard', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 7100,
+  });
+  const eTorque = cleanSpec({ ...standard, engineVariant: 'eTorque' });
+
+  assert.equal(buildVinCapacitySummary(standard, findMatches(standard, { year: 2021 }), 'tow').min, 11320);
+  assert.equal(buildVinCapacitySummary(eTorque, findMatches(eTorque, { year: 2021 }), 'tow').min, 11200);
+});
+
+test('2021 RAM 1500 Classic stays on DS rows', () => {
+  const spec = extractDetectedSpec(
+    '1C6RR7KT1MS000000',
+    '2021 MODEL YEAR RAM 1500 CLASSIC TRADESMAN CREW CAB 4X4 5\'7" BOX 5.7L V8 HEMI 3.92 AXLE RATIO GVW RATING 6,900 LB',
+    { DriveType: '4WD/4-Wheel Drive/4x4', CabType: 'Crew/Super Crew/Crew Max', EngineModel: '5.7L V8' },
+  );
+  const matches = findMatches(spec, { year: 2021 });
+
+  assert.equal(spec.model, '1500 Classic');
+  assert.equal(spec.engine, '5.7L HEMI V8');
+  assert.equal(buildVinCapacitySummary(spec, matches, 'tow').min, 10170);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'payload').min, 1560);
+});
+
+test('2021 RAM 2500 preserves gas, Cummins, drive, and GVWR rows', () => {
+  const gas = cleanSpec({
+    year: 2021, model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '4.10', gvwr: 10000,
+  });
+  const diesel = cleanSpec({
+    year: 2021, model: '2500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Mega', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 9900,
+  });
+
+  assert.equal(buildVinCapacitySummary(gas, findMatches(gas, { year: 2021 }), 'tow').min, 16890);
+  assert.equal(buildVinCapacitySummary(diesel, findMatches(diesel, { year: 2021 }), 'tow').min, 14690);
+  assert.equal(buildVinCapacitySummary(diesel, findMatches(diesel, { year: 2021 }), 'payload').min, 1940);
+});
+
+test('2021 RAM 3500 keeps SRW, DRW, standard Cummins, and HO Cummins distinct', () => {
+  const srw = cleanSpec({
+    year: 2021, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 11800,
+  });
+  const drwHo = cleanSpec({
+    year: 2021, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', rearWheels: 'DRW', drive: '4x4', cab: 'Crew', bed: `8'`, axleRatio: '4.10', gvwr: 14000,
+  });
+
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2021 }), 'tow').min, 20230);
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2021 }), 'payload').min, 4200);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2021 }), 'tow').min, 34120);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2021 }), 'payload').min, 5590);
+});
+
+test('2021 chassis cabs are detected as unsupported instead of matching pickup rows', () => {
+  const spec = extractDetectedSpec(
+    '3C63R3GL1MG000000',
+    '2021 MODEL YEAR RAM 3500 CHASSIS CAB TRADESMAN REGULAR CAB 4X4 Engine: 6.7L I6 Cummins Turbo Diesel Engine',
+    { DriveType: '4WD/4-Wheel Drive/4x4', CabType: 'Regular', BedType: 'Long', DisplacementL: '6.7', EngineCylinders: '6', FuelTypePrimary: 'Diesel' },
+  );
+
+  assert.equal(spec.model, 'Chassis Cab');
+  assert.equal(findMatches(spec, { year: 2021 }).towMatches.length, 0);
+});
+
+test('2022 RAM 1500 Classic uses DS rows and does not fall through to DT rows', () => {
+  const spec = extractDetectedSpec(
+    '1C6RR7KT0NS000000',
+    '2022 MODEL YEAR RAM 1500 CLASSIC TRADESMAN CREW CAB 4X4 5\'7" BOX 5.7L V8 HEMI 3.92 AXLE RATIO GVW RATING 6,900 LB',
+    { DriveType: '4WD/4-Wheel Drive/4x4', CabType: 'Crew/Super Crew/Crew Max', EngineModel: '5.7L V8' },
+  );
+
+  assert.equal(spec.model, '1500 Classic');
+  assert.equal(spec.engine, '5.7L HEMI V8');
+  assert.equal(buildVinCapacitySummary(spec, findMatches(spec, { year: 2022 }), 'tow').min, 10180);
+  assert.equal(buildVinCapacitySummary(spec, findMatches(spec, { year: 2022 }), 'payload').min, 1560);
+});
+
+test('2022 RAM 1500 Classic keeps its Regular Cab and DT rows distinct', () => {
+  const classic = cleanSpec({
+    year: 2022, model: '1500 Classic', engine: '5.7L HEMI V8', drive: '4x2', cab: 'Regular', bed: `8'`, axleRatio: '3.92', gvwr: 6600,
+  });
+
+  const matches = findMatches(classic, { year: 2022 });
+  const summary = buildVinCapacitySummary(classic, matches, 'tow');
+  assert.equal(summary.min, 10620);
+  assert.equal(matches.towMatches[0].model, '1500 Classic');
+});
+
+test('2022 1500 keeps standard HEMI and eTorque chart rows separate', () => {
+  const standard = cleanSpec({
+    year: 2022, model: '1500', engine: '5.7L HEMI V8 eTorque', engineVariant: 'Standard', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', gvwr: 7100,
+  });
+  const eTorque = cleanSpec({ ...standard, engineVariant: 'eTorque' });
+
+  const standardSummary = buildVinCapacitySummary(standard, findMatches(standard, { year: 2022 }), 'tow');
+  const eTorqueSummary = buildVinCapacitySummary(eTorque, findMatches(eTorque, { year: 2022 }), 'tow');
+
+  assert.equal(standardSummary.min, 11260);
+  assert.equal(eTorqueSummary.min, 11210);
+});
+
+test('2022 1500 EcoDiesel uses its 4x4 crew long-box row', () => {
+  const spec = cleanSpec({
+    year: 2022, model: '1500', engine: '3.0L EcoDiesel V6', drive: '4x4', cab: 'Crew', bed: `6'4"`, axleRatio: '3.92', gvwr: 7200,
+  });
+  const matches = findMatches(spec, { year: 2022 });
+
+  assert.equal(buildVinCapacitySummary(spec, matches, 'tow').min, 9460);
+  assert.equal(buildVinCapacitySummary(spec, matches, 'payload').min, 1750);
+});
+
+test('2022 2500 keeps 4x2, 4x4, and Power Wagon gas rows distinct', () => {
+  const fourByFour = cleanSpec({
+    year: 2022, model: '2500', engine: '6.4L HEMI V8', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '4.10', gvwr: 10000,
+  });
+  const fourByTwo = cleanSpec({ ...fourByFour, drive: '4x2' });
+  const powerWagon = cleanSpec({ ...fourByFour, drive: '4x4', trim: 'Power Wagon', axleRatio: '4.10', gvwr: 8565 });
+
+  assert.equal(buildVinCapacitySummary(fourByFour, findMatches(fourByFour, { year: 2022 }), 'tow').min, 17090);
+  assert.equal(buildVinCapacitySummary(fourByTwo, findMatches(fourByTwo, { year: 2022 }), 'tow').min, 17390);
+  assert.equal(buildVinCapacitySummary(powerWagon, findMatches(powerWagon, { year: 2022 }), 'tow').min, 10590);
+});
+
+test('2022 2500 standard Cummins offers GVWR refinement when the sticker omits it', () => {
+  const spec = cleanSpec({
+    year: 2022, model: '2500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Mega', bed: `6'4"`, ramBox: false, axleRatio: '3.73',
+  });
+  const matches = findMatches(spec, { year: 2022 });
+  const summary = buildVinCapacitySummary(spec, matches, 'tow');
+
+  assert.deepEqual([summary.min, summary.max], [14620, 15620]);
+  assert.deepEqual(getOverrideOptions(spec, matches).gvwr, ['9900', '10000']);
+});
+
+test('2022 3500 holds SRW, DRW, standard Cummins, and HO Cummins rows apart', () => {
+  const srw = cleanSpec({
+    year: 2022, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'Standard', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `6'4"`, ramBox: false, axleRatio: '3.73', gvwr: 11800,
+  });
+  const drwHo = cleanSpec({
+    year: 2022, model: '3500', engine: '6.7L Cummins HO', engineVariant: 'HO', rearWheels: 'DRW', drive: '4x4', cab: 'Crew', bed: `8'`, ramBox: false, axleRatio: '4.10', gvwr: 14000,
+  });
+
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2022 }), 'tow').min, 20220);
+  assert.equal(buildVinCapacitySummary(srw, findMatches(srw, { year: 2022 }), 'payload').min, 4190);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2022 }), 'tow').min, 34070);
+  assert.equal(buildVinCapacitySummary(drwHo, findMatches(drwHo, { year: 2022 }), 'payload').min, 5580);
 });
 
 test('2023 2500 standard Cummins uses the correct chart range until door-sticker GVWR is selected', () => {

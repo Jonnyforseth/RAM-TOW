@@ -1127,8 +1127,8 @@ async function readVinFromCanvas(frameCanvas) {
 async function processDetectedVin(vin) {
   vinInput.value = vin;
   const modelYear = getVinModelYear(vin);
-  if (modelYear && modelYear < 2023) {
-    showStatus(vinStatus, `VIN Lookup only supports 2023 and newer RAM trucks. Detected ${modelYear}.`, true);
+  if (modelYear && modelYear < 2019) {
+    showStatus(vinStatus, `VIN Lookup only supports 2019 and newer RAM trucks. Detected ${modelYear}.`, true);
     return;
   }
   showStatus(vinStatus, `VIN scanned: ${vin}. Pulling sticker and matching the RAM charts...`);
@@ -1178,8 +1178,8 @@ vinForm.addEventListener('submit', async (event) => {
 
   vinInput.value = vin;
   const modelYear = getVinModelYear(vin);
-  if (modelYear && modelYear < 2023) {
-    showStatus(vinStatus, `VIN Lookup only supports 2023 and newer RAM trucks. Detected ${modelYear}.`, true);
+  if (modelYear && modelYear < 2019) {
+    showStatus(vinStatus, `VIN Lookup only supports 2019 and newer RAM trucks. Detected ${modelYear}.`, true);
     return;
   }
   showStatus(vinStatus, 'Pulling sticker and matching the RAM charts...');

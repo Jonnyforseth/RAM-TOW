@@ -12,6 +12,10 @@ const { DEFAULT_CHART_YEAR, SUPPORTED_CHART_YEARS } = require('../data/chart-dat
 const WINDOW_STICKER_BASE_URL = 'https://www.chrysler.com/hostd/windowsticker/getWindowStickerPdf.do?vin=';
 const NHTSA_BASE_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/';
 const VIN_MODEL_YEAR_MAP = {
+  K: 2019,
+  L: 2020,
+  M: 2021,
+  N: 2022,
   P: 2023,
   R: 2024,
   S: 2025,
@@ -91,6 +95,13 @@ async function decodeVin(vin, modelYear) {
 }
 
 function detectModel(vin, stickerText) {
+  if (/RAM\s+(?:3500|4500|5500)\s+CHASSIS\s+CAB|CHASSIS\s+CAB/i.test(stickerText)) {
+    return 'Chassis Cab';
+  }
+  // The 2021 and 2022 1500 Classic are the older DS platform, not DT chart sets.
+  if (/RAM\s+1500\s+CLASSIC/i.test(stickerText)) {
+    return '1500 Classic';
+  }
   if (/RAM 1500/i.test(stickerText)) {
     return '1500';
   }
@@ -138,7 +149,12 @@ function detectAxleRatio(stickerText) {
 }
 
 function detectGVWR(stickerText) {
-  const matches = [...String(stickerText || '').matchAll(/GVW Rating\s+[^\d]*(\d{1,2},\d{3})/gi)]
+  const source = String(stickerText || '');
+  const matches = [
+    ...source.matchAll(/GVW Rating\s+[^\d]*(\d{1,2},\d{3})/gi),
+    ...source.matchAll(/GVWR\s*:\s*(?:\d{1,2},?\d{3}\s*kg\s*)?\((\d{1,2},\d{3})\s*lb\)/gi),
+    ...source.matchAll(/GVWR\s*:\s*(\d{1,2},\d{3})\s*lb/gi),
+  ]
     .map((match) => Number(match[1].replace(/,/g, '')))
     .filter(Number.isFinite);
 
@@ -177,17 +193,23 @@ function detectBed(vin, stickerText, decoded, model, cab, year) {
     return decodedBed;
   }
   // Older HD VIN decodes say only "Short" or "Long" for Crew Cabs. That is
-  // insufficient for the 2023 source chart, so leave it selectable.
-  if (year === 2023 && model !== '1500' && /^(short|long)$/i.test(decodedBedType)) {
+  // insufficient for the older source charts, so leave Crew values selectable.
+  if ((year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023) && model !== '1500' && /^(short|long)$/i.test(decodedBedType)) {
     return cab === 'Mega' ? `6'4"` : cab === 'Regular' ? `8'` : null;
   }
   if (/^short$/i.test(decodedBedType)) {
+    if (model === '1500 Classic') {
+      return cab === 'Regular' ? `6'4"` : `5'7"`;
+    }
     if (model === '1500') {
       return `5'7"`;
     }
     return `6'4"`;
   }
   if (/^long$/i.test(decodedBedType)) {
+    if (model === '1500 Classic') {
+      return cab === 'Regular' ? `8'` : `6'4"`;
+    }
     if (model === '1500') {
       return `6'4"`;
     }
@@ -303,6 +325,17 @@ function detectHemiVariant(stickerText) {
   return /etorque|bsg/i.test(String(stickerText || '')) ? 'eTorque' : 'Standard';
 }
 
+function detectTransmission(stickerText, decoded = {}) {
+  const source = `${stickerText || ''} ${decoded.TransmissionStyle || ''} ${decoded.TransmissionSpeeds || ''}`.replace(/[–—]/g, '-');
+  if (/8[\s-]*(?:speed|spd)|8hp\d+/i.test(source)) {
+    return '8-Speed';
+  }
+  if (/6[\s-]*(?:speed|spd)|65rfe|68rfe|aisin/i.test(source)) {
+    return '6-Speed';
+  }
+  return null;
+}
+
 function detectRamBox(stickerText) {
   return /ram\s*box/i.test(String(stickerText || '')) ? true : null;
 }
@@ -343,7 +376,14 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const drive = normalizeDrive(stickerText) || normalizeDrive(decoded.DriveType);
   const bed = detectBed(vin, stickerText, decoded, model, cab, year);
   const rearWheels = detectRearWheels(vin, stickerText, model);
-  const engine = detectEngine(stickerText, decoded);
+  const detectedEngine = detectEngine(stickerText, decoded);
+  const engine = model === '1500 Classic'
+    ? detectedEngine === '3.6L Pentastar V6 eTorque'
+      ? '3.6L Pentastar V6'
+      : detectedEngine === '5.7L HEMI V8 eTorque'
+        ? '5.7L HEMI V8'
+        : detectedEngine
+    : detectedEngine;
   const stickerGvwr = detectGVWR(stickerText) || detectDecodedGvwr(decoded.GVWR) || detectDecodedGvwr(decoded.GVWR_to);
   const inferredGvwr = stickerGvwr
     ? null
@@ -358,11 +398,12 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     rearWheels,
     ramBox: detectRamBox(stickerText),
     engine,
-    engineVariant: (year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
+    engineVariant: (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
       ? detectDieselVariant(stickerText, decoded)
-      : year === 2023 && engine === '5.7L HEMI V8 eTorque'
+      : (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023) && engine === '5.7L HEMI V8 eTorque'
         ? detectHemiVariant(stickerText)
         : null,
+    transmission: model === '1500 Classic' ? detectTransmission(stickerText, decoded) : null,
     trim,
     axleRatio: detectAxleRatio(stickerText),
     gvwr: stickerGvwr,
@@ -388,6 +429,10 @@ async function lookupVin(vinInput) {
   const vinYear = detectModelYearFromVin(vin);
   const [{ pdfUrl, text }, decoded] = await Promise.all([fetchStickerText(vin), decodeVin(vin, vinYear)]);
   const detectedSpec = extractDetectedSpec(vin, text, decoded, { chartYear: vinYear });
+
+  if (detectedSpec.model === 'Chassis Cab') {
+    throw new Error('VIN Lookup supports RAM pickup trucks only. Chassis cab models are not supported.');
+  }
 
   return {
     vin,

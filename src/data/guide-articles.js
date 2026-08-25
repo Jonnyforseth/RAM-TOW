@@ -321,7 +321,7 @@ const GUIDE_ARTICLES = [
     title: "Which RAM Trucks Can Be Flat Towed Behind an RV?",
     description: "Understand which RAM 1500, RAM 2500, and RAM 3500 configurations may be approved for flat towing behind a motorhome, and why the exact model-year owner manual and transfer case matter.",
     lead: "Flat towing, also called dinghy towing or four-down towing, is not determined by the RAM badge alone. The truck must have the exact drivetrain and transfer-case procedure authorized in its model-year owner manual.",
-    why: "Using the wrong setup can damage the transmission or transfer case. For the current 2023 through 2026 RAM models covered by RAM Tow, the owner-manual distinction is generally between two-wheel-drive trucks, which are not approved for four-down flat towing, and eligible four-wheel-drive trucks with a transfer case Neutral procedure.",
+    why: "Using the wrong setup can damage the transmission or transfer case. For the current 2019 through 2026 RAM models covered by RAM Tow, the owner-manual distinction is generally between two-wheel-drive trucks, which are not approved for four-down flat towing, and eligible four-wheel-drive trucks with a transfer case Neutral procedure.",
     sections: [
       {
         heading: "The short answer for current RAM trucks",
@@ -550,7 +550,7 @@ const GUIDE_ARTICLES = [
         heading: "The 2026 lineup adds another decision",
         paragraphs: [
           "For 2026, RAM offers the 3.6L Pentastar V6, Standard-Output Hurricane, High-Output Hurricane, and a newly available 5.7L HEMI V8 on select RAM 1500 models. The engine, trim, and configuration all affect the actual tow and payload result.",
-          "Use the year first, then identify the exact engine and configuration. RAM Tow supports 2023 and newer RAM trucks and compares the VIN details to the applicable chart set.",
+          "Use the year first, then identify the exact engine and configuration. RAM Tow supports 2019 and newer RAM pickup trucks and compares the VIN details to the applicable chart set.",
         ],
       },
     ],

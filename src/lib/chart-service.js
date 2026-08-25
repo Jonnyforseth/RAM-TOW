@@ -17,7 +17,7 @@ const chartCache = {
   textsByYear: {},
 };
 
-const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trim', 'trimStrict']);
+const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'transmission', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trim', 'trimStrict']);
 
 function normalize(value) {
   return String(value || '')
@@ -60,7 +60,7 @@ function normalizeCab(value) {
   if (text.includes('quad')) {
     return 'Quad';
   }
-  if (/\breg(ular)?\s+cab\b/i.test(raw) || /\bstandard\s+cab\b/i.test(raw)) {
+  if (/^reg(?:ular)?$/i.test(raw.trim()) || /\breg(ular)?\s+cab\b/i.test(raw) || /\bstandard\s+cab/i.test(raw)) {
     return 'Regular';
   }
   if (text.includes('regular')) {
@@ -153,17 +153,28 @@ function normalizeEngine(value) {
 }
 
 function cleanSpec(input = {}) {
+  const model = input.model ? String(input.model) : null;
+  const normalizedEngine = normalizeEngine(input.engine);
+  const engine = model === '1500 Classic'
+    ? normalizedEngine === '3.6L Pentastar V6 eTorque'
+      ? '3.6L Pentastar V6'
+      : normalizedEngine === '5.7L HEMI V8 eTorque'
+        ? '5.7L HEMI V8'
+        : normalizedEngine
+    : normalizedEngine;
+
   return {
     vin: String(input.vin || '').toUpperCase(),
     year: input.year ? Number(input.year) : null,
-    model: input.model ? String(input.model) : null,
+    model,
     drive: normalizeDrive(input.drive),
     cab: normalizeCab(input.cab),
     bed: normalizeBed(input.bed),
     rearWheels: normalizeRearWheels(input.rearWheels),
     ramBox: normalizeRamBox(input.ramBox),
-    engine: normalizeEngine(input.engine),
+    engine,
     engineVariant: input.engineVariant ? String(input.engineVariant).trim() : null,
+    transmission: input.transmission ? String(input.transmission).trim() : null,
     trim: input.trim ? String(input.trim).trim() : null,
     axleRatio: input.axleRatio ? String(input.axleRatio).trim() : null,
     gvwr: toNumber(input.gvwr),
@@ -229,6 +240,12 @@ function scoreRow(row, spec, isPayload) {
     mismatches.push('engineVariant');
   } else if (spec.engineVariant && row.engineVariant === spec.engineVariant) {
     score += 18;
+  }
+
+  if (spec.transmission && row.transmission && row.transmission !== spec.transmission) {
+    mismatches.push('transmission');
+  } else if (spec.transmission && row.transmission === spec.transmission) {
+    score += 16;
   }
 
   if (spec.drive && row.drive !== spec.drive) {
@@ -510,15 +527,21 @@ async function ensureChartTexts(year = DEFAULT_CHART_YEAR) {
   };
   const pdfPaths = getPdfPaths(chartYear);
 
-  for (const [key, path] of Object.entries(pdfPaths)) {
-    if (!path || !fs.existsSync(path)) {
-      texts[key] = '';
-      continue;
+  for (const [key, configuredPaths] of Object.entries(pdfPaths)) {
+    const paths = Array.isArray(configuredPaths) ? configuredPaths : [configuredPaths];
+    const documentTexts = [];
+
+    for (const path of paths) {
+      if (!path || !fs.existsSync(path)) {
+        continue;
+      }
+      const parser = await createPdfParser(fs.readFileSync(path));
+      const result = await parser.getText();
+      documentTexts.push(result.text);
+      await parser.destroy();
     }
-    const parser = await createPdfParser(fs.readFileSync(path));
-    const result = await parser.getText();
-    texts[key] = result.text;
-    await parser.destroy();
+
+    texts[key] = documentTexts.join('\n\n');
   }
 
   chartCache.textsByYear[chartYear] = texts;
@@ -549,7 +572,7 @@ function makeSnippet(text, needle) {
 async function findRawChartHints(spec, options = {}) {
   const chartYear = resolveChartYear(options.year || spec?.year);
   const texts = await ensureChartTexts(chartYear);
-  const chartText = spec.model === '1500' ? texts.ram1500 : texts.ramHD;
+  const chartText = String(spec.model || '').startsWith('1500') ? texts.ram1500 : texts.ramHD;
   const hints = [];
   const needles = [getEngineNeedle(spec), spec.axleRatio, spec.gvwr, spec.trim].filter(Boolean);
 

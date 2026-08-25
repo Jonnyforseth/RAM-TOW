@@ -10,12 +10,79 @@ const {
   LIGHT_DUTY_PAYLOAD_ROWS_2023,
   LIGHT_DUTY_TOW_ROWS_2023,
 } = require('./chart-year-2023');
+const {
+  HD_PAYLOAD_ROWS_2022,
+  HD_TOW_ROWS_2022,
+  LIGHT_DUTY_PAYLOAD_ROWS_2022,
+  LIGHT_DUTY_TOW_ROWS_2022,
+} = require('./chart-year-2022');
+const {
+  HD_PAYLOAD_ROWS_2021,
+  HD_TOW_ROWS_2021,
+  LIGHT_DUTY_PAYLOAD_ROWS_2021,
+  LIGHT_DUTY_TOW_ROWS_2021,
+} = require('./chart-year-2021');
+const {
+  HD_PAYLOAD_ROWS_2019,
+  HD_TOW_ROWS_2019,
+  LIGHT_DUTY_PAYLOAD_ROWS_2019,
+  LIGHT_DUTY_TOW_ROWS_2019,
+} = require('./chart-year-2019');
+const {
+  HD_PAYLOAD_ROWS_2020,
+  HD_TOW_ROWS_2020,
+  LIGHT_DUTY_PAYLOAD_ROWS_2020,
+  LIGHT_DUTY_TOW_ROWS_2020,
+} = require('./chart-year-2020');
 
 const DEFAULT_CHART_YEAR = 2026;
 // Add a model year here, its two source PDFs, and its row data to extend support.
-const SUPPORTED_CHART_YEARS = [2023, 2024, 2025, 2026];
+const SUPPORTED_CHART_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
 const PDF_PATHS_BY_YEAR = {
+  2019: {
+    ram1500: [
+      'C:/Users/Jonat/Downloads/Ram_LD_DT_Trailer_Tow_Weight_Chart_MY19.pdf',
+      'C:/Users/Jonat/Downloads/Ram_LD_DS_Trailer_Tow_Weight_Chart_MY19.pdf',
+    ],
+    ramHD: [
+      'C:/Users/Jonat/Downloads/Ram_HD_2500_DJ_Trailer_Tow_Weight_Chart_MY19.pdf',
+      'C:/Users/Jonat/Downloads/Ram_HD_3500_D2_Trailer_Tow_Weight_Chart_MY19.pdf',
+    ],
+  },
+  2020: {
+    ram1500: [
+      'C:/Users/Jonat/Downloads/Ram_LD_DT_Trailer_Tow_Weight_Chart_MY20.pdf',
+      'C:/Users/Jonat/Downloads/Ram_LD_DS_Trailer_Tow_Weight_Chart_MY20.pdf',
+    ],
+    ramHD: [
+      'C:/Users/Jonat/Downloads/Ram_HD_2500_DJ_Trailer_Tow_Weight_Chart_MY20.pdf',
+      'C:/Users/Jonat/Downloads/Ram_HD_3500_D2_Trailer_Tow_Weight_Chart_MY20.pdf',
+    ],
+  },
+  2021: {
+    ram1500: [
+      'C:/Users/Jonat/Downloads/2021 RAM 1500 1.pdf',
+      'C:/Users/Jonat/Downloads/2021 RAM 1500 2.pdf',
+    ],
+    ramHD: [
+      'C:/Users/Jonat/Downloads/2021 RAM 2500.pdf',
+      'C:/Users/Jonat/Downloads/2021 RAM 3500.pdf',
+    ],
+  },
+  2022: {
+    ram1500: [
+      'C:/Users/Jonat/Downloads/2022 ram 1500 tow charts.pdf',
+      'C:/Users/Jonat/Downloads/2022_RAM_1500_Classic_DS_Weight_and_Tow.pdf',
+    ],
+    ramHD: [
+      'C:/Users/Jonat/Downloads/Ram_HD_DJ 4x4 Weight & Tow_MY22.pdf',
+      'C:/Users/Jonat/Downloads/Ram_HD_D2 4x4 Weight & Tow_MY22.pdf',
+      'C:/Users/Jonat/Downloads/Ram_CC_DD 3500 Crew Cab_Weight & Tow_MY22_R1.pdf',
+      'C:/Users/Jonat/Downloads/Ram_HD_DJ_4x2_Weight_Tow_MY22.pdf',
+      'C:/Users/Jonat/Downloads/Ram_HD_D2_4x2_Weight_Tow_MY22.pdf',
+    ],
+  },
   2023: {
     ram1500: 'C:/Users/Jonat/Downloads/Ram_LD DT_Weight & Tow_MY23.pdf',
     ramHD: 'C:/Users/Jonat/Downloads/2023_RAM_2500_3500_HD_TowChart.pdf',
@@ -391,6 +458,26 @@ const GOOSENECK_REQUIRED_OVER = {
 };
 
 const CHART_DATA_BY_YEAR = {
+  2019: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2019],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2019, ...HD_TOW_ROWS_2019],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2019, ...HD_PAYLOAD_ROWS_2019],
+  },
+  2020: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2020],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2020, ...HD_TOW_ROWS_2020],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2020, ...HD_PAYLOAD_ROWS_2020],
+  },
+  2021: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2021],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2021, ...HD_TOW_ROWS_2021],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2021, ...HD_PAYLOAD_ROWS_2021],
+  },
+  2022: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2022],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2022, ...HD_TOW_ROWS_2022],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2022, ...HD_PAYLOAD_ROWS_2022],
+  },
   2023: {
     pdfPaths: PDF_PATHS_BY_YEAR[2023],
     towRows: [...LIGHT_DUTY_TOW_ROWS_2023, ...HD_TOW_ROWS_2023],
