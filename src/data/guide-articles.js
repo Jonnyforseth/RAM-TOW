@@ -65,6 +65,58 @@ const CORE_GUIDE_ARTICLES = [
     model: "",
   },
   {
+    slug: "ram-8-speed-vs-6-speed-transmission-for-towing",
+    title: "RAM 8-Speed vs. 6-Speed Transmission: Towing and Longevity Differences",
+    description: "Understand how RAM eight-speed and six-speed automatic transmissions differ for towing, engine speed, grades, fuel use, service, and long-term ownership.",
+    lead: "An eight-speed automatic can make a truck feel more relaxed and more responsive with a trailer, but the transmission alone does not create a higher tow rating or guarantee a longer service life. The complete RAM configuration, its cooling system, axle ratio, hitch, payload, maintenance, and the load being pulled still determine the right answer.",
+    why: "More available gear ratios give the powertrain more opportunities to keep the engine in a useful operating range. That can help a loaded truck pull grades without unnecessarily high engine speed and cruise at lower rpm when conditions allow. It does not mean every eight-speed RAM tows more than every six-speed RAM.",
+    sections: [
+      {
+        heading: "First, separate the RAM 1500 and Heavy Duty timelines.",
+        paragraphs: [
+          "RAM 1500 trucks have used eight-speed automatic transmissions for many years. Older RAM 1500 Classic configurations can still appear with either a six-speed or an eight-speed, which is why the model-year chart and window-sticker transmission line matter. Do not assume that every older 1500 with a HEMI has the same transmission or towing row.",
+          "For Heavy Duty trucks, the 2025 RAM 2500 and 3500 update is the most visible recent change. RAM introduced the TorqueFlite HD eight-speed automatic on both the 6.4L HEMI V8 and High-Output 6.7L Cummins diesel. Earlier HD diesel trucks commonly used six-speed automatics, while many late-model gas HD trucks already used an eight-speed design. Compare the actual model year, engine, and transmission rather than treating every 2500 or 3500 as the same.",
+        ],
+      },
+      {
+        heading: "Why an eight-speed can feel better while towing.",
+        paragraphs: [
+          "An eight-speed has more steps between its low and high ratios. In practical towing, that can help the transmission select a ratio closer to what the grade and load need, instead of making a larger jump that either drops engine speed too far or holds it too high. The goal is steadier pulling performance, more useful engine braking behavior, and fewer unnecessary shifts when the transmission calibration and tow mode are working well.",
+          "RAM says the 2025 Heavy Duty eight-speed adds lower cruise rpm and improved performance on graded roads. ZF describes the PowerLine design used behind the 2025 High-Output Cummins as using a wide ratio spread to support torque and fuel efficiency. Those are engineering benefits, not a promise that every route, trailer, or driver will see the same fuel-economy result.",
+        ],
+      },
+      {
+        heading: "Does the eight-speed increase towing capacity?",
+        paragraphs: [
+          "Sometimes a newer powertrain combination earns a different chart rating, but the transmission is only one part of that result. RAM publishes tow ratings for a complete configuration that can include engine output, cooling, axle ratio, drive system, cab, bed, GVWR, rear-wheel setup, hitch equipment, and other components.",
+          "For example, RAM attributes the 2025 Heavy Duty capability changes to its updated Cummins engine and eight-speed package together, including the ability to reach certain ratings with a 3.42 axle where a 4.10 axle was previously associated with maximum towing. That should never be used to apply a newer headline rating to an older six-speed truck. Use the exact model-year chart and VIN result.",
+        ],
+      },
+      {
+        heading: "What about longevity and reliability?",
+        paragraphs: [
+          "There is no honest universal rule that an eight-speed will last longer than a six-speed. Long-term transmission life depends on the specific design, calibration, maintenance, fluid condition, cooling, actual load, driving environment, and whether the truck is operated within its ratings. A truck that spends much of its life towing heavy loads creates more heat and fluid stress regardless of gear count.",
+          "The potential ownership benefit is that a well-matched eight-speed can keep engine and transmission operation in a more suitable range more often. That may reduce unnecessary high-rpm cruising or harsh ratio jumps, but it is not a substitute for tow/haul mode, proper service, correct fluid, cooling-system care, and realistic trailer weights. Follow the owner manual and service schedule for the exact RAM.",
+        ],
+      },
+      {
+        heading: "How to shop an older six-speed truck versus a newer eight-speed RAM.",
+        paragraphs: [
+          "Start with the loaded trailer and actual tongue or pin weight. A well-equipped six-speed truck that has sufficient chart-backed towing capacity, payload, hitch equipment, and cooling can be a better match than an eight-speed truck that is short on payload or is not configured for the trailer.",
+          "When comparing candidates, run each VIN in RAM Tow. Confirm the transmission, axle ratio, drive type, cab, bed, GVWR, rear wheels, payload sticker, and hitch type. Then inspect service records and have a qualified RAM professional verify the combination before purchase or towing.",
+        ],
+      },
+    ],
+    check: "Use VIN Lookup to identify the exact model year and configuration, then compare the result with the applicable RAM tow chart and the physical truck labels. For an older 1500 Classic or an HD diesel, confirm the transmission before assuming its towing behavior or maintenance needs.",
+    referenceLinks: [
+      { url: "https://www.stellantisfleet.com/news-and-events/stellantis-news/2025-ram-2500-and-3500-heavy-duty-unveiled-with-exceptional-capability-enhanced-towing-features-and-leading-edge-technology.html", label: "Read Stellantis' 2025 RAM Heavy Duty powertrain overview" },
+      { url: "https://www.zf.com/products/en/cv/products_76738.html", label: "Read ZF's PowerLine eight-speed technical overview" },
+      { url: "https://www.ramtrucks.com/assets/pdf/brochures/2013_commercial_vehicles.pdf", label: "Read RAM's original TorqueFlite eight-speed overview for the 1500" },
+      { url: "https://www.ramtrucks.com/towing/before-you-buy.html", label: "Review RAM towing basics before choosing a truck" },
+    ],
+    model: "",
+  },
+  {
     slug: "when-to-consider-weight-distributing-hitch-and-sway-control",
     title: "When Should You Consider a Weight-Distributing Hitch and Sway Control?",
     description: "Learn the role of weight-distributing hitches and sway-control equipment in conventional trailer towing, plus the configuration checks to complete first.",
