@@ -808,6 +808,50 @@ body::before {
   color: var(--ink);
 }
 
+.vin-unit-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--sand);
+  background: rgba(226, 190, 128, 0.14);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.vin-unit-note {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.vin-unit-buttons {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.vin-unit-button {
+  min-width: 44px;
+  padding: 6px 9px;
+  border: 1px solid rgba(42, 39, 34, 0.35);
+  background: rgba(255, 250, 242, 0.72);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.vin-unit-button.is-active {
+  border-color: var(--steel);
+  background: var(--steel);
+  color: #fffaf1;
+}
+
 .metric-label {
   color: var(--red);
 }
@@ -2417,6 +2461,169 @@ body.guide-page {
   min-height: 150px;
 }
 
+.year-guide-library {
+  border-top: 6px solid var(--sand);
+  background:
+    linear-gradient(135deg, rgba(21, 25, 27, 0.98), rgba(66, 52, 43, 0.96)),
+    #1c2022;
+}
+
+.year-guide-library > p:not(.fit-eyebrow) {
+  max-width: 780px;
+  color: rgba(255, 250, 241, 0.86);
+}
+
+.year-guide-library h2 {
+  color: #fffaf1;
+}
+
+.year-guide-library .fit-eyebrow {
+  color: #e7ba78;
+}
+
+.year-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.year-guide-card {
+  display: flex;
+  min-height: 315px;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid rgba(38, 34, 29, 0.22);
+  border-top: 5px solid var(--steel);
+  border-radius: 3px;
+  background: linear-gradient(145deg, #fffaf2, #eee5d8);
+  box-shadow: 0 9px 20px rgba(12, 14, 16, 0.1);
+}
+
+.year-guide-card:nth-child(3n + 2) {
+  border-top-color: var(--sand);
+}
+
+.year-guide-card:nth-child(3n) {
+  border-top-color: var(--red);
+}
+
+.year-guide-kicker {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.year-guide-card h3 {
+  margin: 9px 0 0;
+  color: var(--ink);
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  letter-spacing: 0.02em;
+  line-height: 0.9;
+}
+
+.year-guide-summary {
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.year-guide-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 17px 0;
+}
+
+.year-guide-figures span {
+  display: grid;
+  gap: 4px;
+  padding: 9px 6px;
+  border-top: 2px solid var(--steel);
+  background: rgba(37, 42, 45, 0.07);
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.year-guide-figures strong {
+  color: var(--ink);
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: 1.28rem;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+}
+
+.year-guide-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: auto;
+}
+
+/* 2023+ cards have two source links instead of the older four-chart layout. */
+.year-guide-card:nth-child(n + 5) .year-guide-actions {
+  margin-top: 0;
+}
+
+.year-guide-actions .button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.year-guide-actions > a:not(.button) {
+  padding: 9px 8px;
+  border: 1px solid rgba(42, 39, 34, 0.22);
+  background: rgba(255, 250, 242, 0.68);
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.year-guide-actions > a:not(.button):hover {
+  border-color: var(--red);
+  background: var(--steel);
+  color: #fffaf1;
+}
+
+.year-guide-card-coming {
+  border-top-color: var(--sand);
+  background: linear-gradient(145deg, #302d29, #181c1e);
+}
+
+.year-guide-card-coming h3,
+.year-guide-card-coming .year-guide-figures strong {
+  color: #fffaf1;
+}
+
+.year-guide-card-coming .year-guide-summary,
+.year-guide-card-coming .year-guide-figures span {
+  color: rgba(255, 250, 241, 0.74);
+}
+
+.year-guide-card-coming .year-guide-figures span {
+  border-top-color: var(--sand);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.year-guide-card-coming .year-guide-actions > a:not(.button) {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fffaf1;
+}
+
 /* Leave the upper-right lane clear for the shared Menu control. */
 .guide-nav .guide-nav-actions {
   margin-right: 116px;
@@ -2425,6 +2632,10 @@ body.guide-page {
 @media (max-width: 1080px) {
   .guide-truck-grid {
     grid-template-columns: 1fr;
+  }
+
+  .year-guide-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .guide-truck-card {
@@ -2498,6 +2709,14 @@ body.guide-page {
 
   .guide-truck-card {
     display: block;
+  }
+
+  .year-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .year-guide-card {
+    min-height: 0;
   }
 
   .guide-truck-card > img {
@@ -2667,6 +2886,36 @@ body.guide-page {
   margin-bottom: 8px;
   padding: 0 0 20px;
   border-bottom: 1px solid var(--line);
+}
+
+.article-headline-numbers {
+  margin: 0 0 22px;
+  padding: 18px 20px;
+  border-left: 5px solid var(--red);
+  background: linear-gradient(120deg, #e4d4bc, #f5ede2);
+}
+
+.article-headline-numbers .fit-eyebrow {
+  margin: 0;
+}
+
+.article-headline-numbers strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink);
+  font-family: 'Barlow Condensed', Impact, sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  letter-spacing: 0.01em;
+  line-height: 0.98;
+}
+
+.article-headline-numbers span {
+  display: block;
+  margin-top: 9px;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .article-review strong {

@@ -35,6 +35,9 @@ function articleHtml(article) {
   const inventoryUrl = inventoryUrls[article.model] || inventoryUrls.default;
   const escapedTitle = escapeHtml(article.title);
   const escapedDescription = escapeHtml(article.description);
+  const articleHeadline = article.headline
+    ? `<aside class="article-headline-numbers"><p class="fit-eyebrow">Lineup capability</p><strong>${escapeHtml(article.headline)}</strong><span>Maximums shown are for properly equipped configurations. Use VIN Lookup for the individual truck.</span></aside>`
+    : '';
   const postSections = [
     {
       id: 'why-it-matters',
@@ -99,6 +102,7 @@ function articleHtml(article) {
               <div class="article-rail-note"><strong>Need a truck-specific answer?</strong><p>Run the VIN to compare the available sticker details to the correct RAM chart.</p><a href="/#vin-form">Check a RAM VIN</a><p class="article-delivery-note">Free Colorado delivery and remote purchase are available through Perkins Motors. Paid continental U.S. delivery is available through <a href="https://runbuggy.com/" target="_blank" rel="noreferrer">RunBuggy</a>.</p></div>
             </aside>
             <div class="article-post-body">
+              ${articleHeadline}
               <div class="article-review"><strong>Reviewed by Perkins RAM Experts</strong><p>Prepared by ${reviewerName}, ${reviewerTitle}. This guidance is based on the applicable RAM towing and payload charts. Confirm the exact truck before towing.</p><a href="/how-ramtow-calculates-towing-capacity">How RAM Tow calculates results</a></div>
               ${postSectionsMarkup}
               <aside class="article-guide-action"><strong>Ready to check a specific truck?</strong><p>VIN Lookup compares the available sticker details with the correct RAM tow chart. Trailer Match starts with the load you are pulling.</p><div><a class="button button-primary" href="/#vin-form">Check a RAM VIN</a><a class="button button-secondary" href="/#trailer-fit">Match My Trailer</a></div></aside>

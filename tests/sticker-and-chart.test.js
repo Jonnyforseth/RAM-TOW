@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches, getOverrideOptions } = require('../src/lib/chart-service');
-const { detectGVWR, detectModelYearFromVin, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
+const { detectGVWR, detectModelYearFromVin, detectVehicleMarket, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
 
 test('detectModelYearFromVin reads 2019 through 2026 model years from the VIN', () => {
   assert.equal(detectModelYearFromVin('1C6RR7KT1KS000000'), 2019);
@@ -23,6 +23,51 @@ test('2019 RAM 1500 keeps standard HEMI and eTorque chart rows separate', () => 
 
   assert.equal(buildVinCapacitySummary(standard, findMatches(standard, { year: 2019 }), 'tow').min, 11340);
   assert.equal(buildVinCapacitySummary(eTorque, findMatches(eTorque, { year: 2019 }), 'tow').min, 11250);
+});
+
+test('2023 Canadian 1500 Sport eTorque returns an axle-dependent chart range', () => {
+  const spec = cleanSpec({
+    year: 2023,
+    model: '1500',
+    trim: 'Sport',
+    market: 'CA',
+    engine: '5.7L HEMI V8 eTorque',
+    engineVariant: 'eTorque',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `5'7"`,
+  });
+  const matches = findMatches(spec, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(spec, matches, 'tow');
+
+  assert.equal(matches.towMatches.length, 2);
+  assert.deepEqual([towSummary.min, towSummary.max], [8270, 11370]);
+  assert.deepEqual(getOverrideOptions(spec, matches).axleRatio, ['3.21', '3.92']);
+});
+
+test('2023 Canadian Limited Longhorn uses a clearly marked mechanical-chart fallback', () => {
+  const canadianSpec = cleanSpec({
+    year: 2023,
+    market: 'CA',
+    model: '2500',
+    trim: 'Limited Longhorn',
+    engine: '6.7L Cummins HO',
+    engineVariant: 'Standard',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `6'4"`,
+    rearWheels: 'SRW',
+    axleRatio: '3.73',
+  });
+  const canadianMatches = findMatches(canadianSpec, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(canadianSpec, canadianMatches, 'tow');
+  const usMatches = findMatches({ ...canadianSpec, market: null }, { year: 2023 });
+
+  assert.ok(canadianMatches.towMatches.length > 0);
+  assert.ok(canadianMatches.towMatches.every((row) => row.canadianTrimFallback));
+  assert.deepEqual([towSummary.min, towSummary.max], [19170, 19980]);
+  assert.match(towSummary.note, /Canadian-market trim naming/);
+  assert.equal(usMatches.towMatches.length, 0);
 });
 
 test('2019 RAM 1500 Classic keeps six-speed and eight-speed HEMI rows distinct', () => {
@@ -83,6 +128,7 @@ test('2019 Canadian-format stickers recognize Regular Cab and the pounds value i
     Transmission: 6-speed AISIN heavy-duty automatic transmission
     3.73 rear axle ratio
     GVWR: 5352 kg (11,800 lb)
+    FCA Canada Inc. This Vehicle Is Manufactured To Meet Specific Canadian Requirements.
   `, {
     ModelYear: '2019',
     DriveType: '4WD/4-Wheel Drive/4x4',
@@ -94,7 +140,20 @@ test('2019 Canadian-format stickers recognize Regular Cab and the pounds value i
   assert.equal(detected.cab, 'Regular');
   assert.equal(detected.bed, `8'`);
   assert.equal(detected.gvwr, 11800);
+  assert.equal(detected.market, 'CA');
   assert.equal(buildVinCapacitySummary(detected, findMatches(detected, { year: 2019 }), 'tow').min, 26440);
+});
+
+test('Canadian market stickers are detected and allow metric GVWR formatting', () => {
+  const canadianSticker = `
+    FCA Canada Inc.
+    This Vehicle Is Manufactured To Meet Specific Canadian Requirements.
+    GVWR: 5 352 kg (11 800 lb)
+    For more information visit: www.ramtruck.ca
+  `;
+
+  assert.equal(detectVehicleMarket(canadianSticker), 'CA');
+  assert.equal(detectGVWR(canadianSticker), 11800);
 });
 
 test('2020 RAM 1500 keeps standard HEMI and eTorque chart rows separate', () => {

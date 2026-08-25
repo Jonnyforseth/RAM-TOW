@@ -11,14 +11,6 @@ export async function onRequestGet(context) {
   try {
     const vinResult = await lookupVin(context.params.vin);
 
-    if (vinResult.detectedSpec?.stickerAvailable === false) {
-      return json({
-        ok: false,
-        errorCode: 'STICKER_OFFLINE',
-        error: 'Window sticker is offline for this truck right now. Try again.',
-      }, 503);
-    }
-
     const chartYear = vinResult.detectedSpec.year;
     const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
     let perkinsInventoryLink = null;

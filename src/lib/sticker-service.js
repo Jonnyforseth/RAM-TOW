@@ -39,11 +39,12 @@ async function fetchStickerText(vin) {
   }
 
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('pdf')) {
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const isPdf = contentType.includes('pdf') || buffer.subarray(0, 4).toString('ascii') === '%PDF';
+  if (!isPdf) {
     throw new Error('The Chrysler endpoint did not return a PDF for that VIN.');
   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
   const parser = await createPdfParser(buffer);
   const result = await parser.getText();
   await parser.destroy();
@@ -94,7 +95,7 @@ async function decodeVin(vin, modelYear) {
   return payload.Results?.[0] || {};
 }
 
-function detectModel(vin, stickerText) {
+function detectModel(vin, stickerText, decoded = {}) {
   if (/RAM\s+(?:3500|4500|5500)\s+CHASSIS\s+CAB|CHASSIS\s+CAB/i.test(stickerText)) {
     return 'Chassis Cab';
   }
@@ -110,6 +111,10 @@ function detectModel(vin, stickerText) {
   }
   if (/RAM 3500/i.test(stickerText)) {
     return '3500';
+  }
+  const decodedModel = String(decoded.Model || '').match(/^(1500|2500|3500)$/)?.[1];
+  if (decodedModel) {
+    return decodedModel;
   }
   if (/^1C6/i.test(vin)) {
     return '1500';
@@ -150,12 +155,14 @@ function detectAxleRatio(stickerText) {
 
 function detectGVWR(stickerText) {
   const source = String(stickerText || '');
+  const parseWeight = (value) => Number(String(value).replace(/[\s,]/g, ''));
+  const weight = '((?:\\d{1,2}(?:[\\s,]\\d{3})*|\\d{3,5}))';
   const matches = [
-    ...source.matchAll(/GVW Rating\s+[^\d]*(\d{1,2},\d{3})/gi),
-    ...source.matchAll(/GVWR\s*:\s*(?:\d{1,2},?\d{3}\s*kg\s*)?\((\d{1,2},\d{3})\s*lb\)/gi),
-    ...source.matchAll(/GVWR\s*:\s*(\d{1,2},\d{3})\s*lb/gi),
+    ...source.matchAll(new RegExp(`GVW Rating\\s+[^\\d]*${weight}`, 'gi')),
+    ...source.matchAll(new RegExp(`GVWR\\s*:\\s*(?:${weight}\\s*kg\\s*)?\\(\\s*${weight}\\s*lb\\s*\\)`, 'gi')),
+    ...source.matchAll(new RegExp(`GVWR\\s*:\\s*${weight}\\s*lb`, 'gi')),
   ]
-    .map((match) => Number(match[1].replace(/,/g, '')))
+    .map((match) => parseWeight(match[match.length - 1]))
     .filter(Number.isFinite);
 
   if (!matches.length) {
@@ -163,6 +170,13 @@ function detectGVWR(stickerText) {
   }
 
   return Math.max(...matches);
+}
+
+function detectVehicleMarket(stickerText) {
+  const source = String(stickerText || '');
+  return /\bFCA Canada\b|\bramtruck\.ca\b|specific Canadian requirements|sale or registration outside of Canada|\bkilomet(?:re|er)s?\b/i.test(source)
+    ? 'CA'
+    : null;
 }
 
 function detectCab(stickerText, decoded) {
@@ -368,7 +382,7 @@ function infer2025ChartGvwr({ year, model, engine, rearWheels, cab, bed, drive }
 
 function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const year = resolveLookupYear(vin, stickerText, decoded, options.chartYear);
-  const model = detectModel(vin, stickerText);
+  const model = detectModel(vin, stickerText, decoded);
   const cab = detectCab(stickerText, decoded);
   const trim = detectTrim(stickerText, decoded);
   const stickerAvailable = hasUsableStickerText(stickerText);
@@ -419,6 +433,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     gvwrClassMax: decodedGvwrBounds?.max || null,
     inferredGvwr: inferredGvwr || null,
     gvwrSource: inferredGvwr ? `${year} RAM chart configuration rule` : stickerGvwr ? 'window sticker' : null,
+    market: detectVehicleMarket(stickerText),
     stickerAvailable,
     stickerTitle: stickerText.match(/(?:A\s+)?20\d{2}\s+MODEL YEAR\s+([\s\S]+?)\s+THIS VEHICLE/i)?.[1]?.replace(/\s+/g, ' ').trim() || null,
   };
@@ -427,7 +442,17 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
 async function lookupVin(vinInput) {
   const vin = assertVin(vinInput);
   const vinYear = detectModelYearFromVin(vin);
-  const [{ pdfUrl, text }, decoded] = await Promise.all([fetchStickerText(vin), decodeVin(vin, vinYear)]);
+  const decoded = await decodeVin(vin, vinYear);
+  let sticker = null;
+
+  try {
+    sticker = await fetchStickerText(vin);
+  } catch (_error) {
+    // Keep a valid VIN decode usable when the Chrysler sticker service fails.
+  }
+
+  const pdfUrl = sticker?.pdfUrl || null;
+  const text = sticker?.text || '';
   const detectedSpec = extractDetectedSpec(vin, text, decoded, { chartYear: vinYear });
 
   if (detectedSpec.model === 'Chassis Cab') {
@@ -447,6 +472,7 @@ module.exports = {
   WINDOW_STICKER_BASE_URL,
   assertVin,
   detectGVWR,
+  detectVehicleMarket,
   detectModelYearFromSticker,
   detectModelYearFromVin,
   extractDetectedSpec,

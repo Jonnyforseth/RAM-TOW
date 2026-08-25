@@ -18,6 +18,7 @@ const chartCache = {
 };
 
 const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'transmission', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trim', 'trimStrict']);
+const CANADIAN_SPECIAL_TRIMS = new Set(['trx', 'power wagon', 'rebel']);
 
 function normalize(value) {
   return String(value || '')
@@ -181,6 +182,7 @@ function cleanSpec(input = {}) {
     inferredGvwr: toNumber(input.inferredGvwr),
     gvwrClassMin: toNumber(input.gvwrClassMin),
     gvwrClassMax: toNumber(input.gvwrClassMax),
+    market: String(input.market || '').trim().toUpperCase() || null,
   };
 }
 
@@ -278,7 +280,9 @@ function scoreRow(row, spec, isPayload) {
     score += 12;
   }
 
-  if (row.trimStrict && spec.trim && !trimMatches(row.trimStrict, spec.trim)) {
+  // Some Canadian-market trims use a different name for the same published
+  // mechanical chart family. trimAliases are intentional, scoped exceptions.
+  if (row.trimStrict && spec.trim && !rowTrimMatches(row, spec.trim)) {
     mismatches.push('trimStrict');
   } else if (row.trimStrict && spec.trim) {
     score += 14;
@@ -337,6 +341,46 @@ function decorateMatch(row, scoreInfo, type) {
   };
 }
 
+function rankedMatches(rows, spec, isPayload, options = {}) {
+  return rows
+    .map((row) => ({ row, scoreInfo: scoreRow(row, spec, isPayload) }))
+    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
+    .sort(compareRankedMatches)
+    .map(({ row, scoreInfo }) => decorateMatch(
+      options.canadianTrimFallback
+        ? { ...row, confidence: 'medium', canadianTrimFallback: true }
+        : row,
+      scoreInfo,
+      options.type,
+    ));
+}
+
+function canUseCanadianTrimFallback(spec) {
+  return spec.market === 'CA'
+    && Boolean(spec.trim)
+    && !CANADIAN_SPECIAL_TRIMS.has(normalize(spec.trim));
+}
+
+function isCanadianSpecialTrimRow(row) {
+  return [row.trim, row.trimHint, row.trimStrict]
+    .filter(Boolean)
+    .some((trim) => CANADIAN_SPECIAL_TRIMS.has(normalize(trim)));
+}
+
+function canadianTrimFallback(rows, spec, isPayload, type) {
+  if (!canUseCanadianTrimFallback(spec)) {
+    return [];
+  }
+
+  // Canadian retail trim names do not always appear in the U.S.-formatted
+  // source chart. Keep all mechanical identifiers strict and only relax the
+  // trim-name gate after an exact chart-name match is unavailable.
+  return rankedMatches(rows.filter((row) => !isCanadianSpecialTrimRow(row)), { ...spec, trim: null }, isPayload, {
+    type,
+    canadianTrimFallback: true,
+  });
+}
+
 function hasDisallowedMismatch(scoreInfo) {
   return scoreInfo.mismatches.some((key) => CRITICAL_MISMATCH_KEYS.has(key));
 }
@@ -369,7 +413,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
   const trimCompatibleRows = candidateRows.filter((row) => {
-    return !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
+    return row.canadianTrimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
   });
   if (trimCompatibleRows.length) {
     candidateRows = trimCompatibleRows;
@@ -431,7 +475,9 @@ function buildVinCapacitySummary(spec, matches, kind) {
     max: values.at(-1) ?? primary[capacityKey] ?? null,
     candidateCount: candidateRows.length,
     reasonText: null,
-    note: null,
+    note: primary.canadianTrimFallback
+      ? 'Canadian-market trim name is not published as a separate source-chart row. This result is matched by the truck\'s engine, cab, bed, drivetrain, axle, and GVWR; confirm with a RAM dealer before towing.'
+      : null,
   };
 
   if (!needsRange) {
@@ -439,6 +485,9 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   const reasons = [];
+  if (primary.canadianTrimFallback) {
+    reasons.push('Canadian-market trim naming');
+  }
   if (!spec.axleRatio && axleValues.length > 1) {
     reasons.push('axle ratio');
   }
@@ -457,17 +506,14 @@ function findMatches(spec, options = {}) {
   const towRowsForYear = getTowRows(chartYear);
   const payloadRowsForYear = getPayloadRows(chartYear);
 
-  const towMatches = towRowsForYear
-    .map((row) => ({ row, scoreInfo: scoreRow(row, spec, false) }))
-    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
-    .sort(compareRankedMatches)
-    .map(({ row, scoreInfo }) => decorateMatch(row, scoreInfo, 'tow'));
-
-  const payloadMatches = payloadRowsForYear
-    .map((row) => ({ row, scoreInfo: scoreRow(row, spec, true) }))
-    .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
-    .sort(compareRankedMatches)
-    .map(({ row, scoreInfo }) => decorateMatch(row, scoreInfo, 'payload'));
+  const matchedTowRows = rankedMatches(towRowsForYear, spec, false, { type: 'tow' });
+  const matchedPayloadRows = rankedMatches(payloadRowsForYear, spec, true, { type: 'payload' });
+  const towMatches = matchedTowRows.length
+    ? matchedTowRows
+    : canadianTrimFallback(towRowsForYear, spec, false, 'tow');
+  const payloadMatches = matchedPayloadRows.length
+    ? matchedPayloadRows
+    : canadianTrimFallback(payloadRowsForYear, spec, true, 'payload');
 
   return {
     towMatches: towMatches.slice(0, 6),
@@ -491,7 +537,7 @@ function getOverrideOptions(spec, matches) {
 
   const compatibleRows = [...matches.towMatches, ...matches.payloadMatches]
     .filter((row) => {
-      return !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
+      return row.canadianTrimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
     });
 
   for (const row of compatibleRows) {

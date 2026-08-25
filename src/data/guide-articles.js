@@ -1,3 +1,5 @@
+const { YEARLINEUP_GUIDE_ARTICLES } = require('./year-guide-data');
+
 const CORE_GUIDE_ARTICLES = [
   {
     slug: "how-much-towing-reserve-should-i-have",
@@ -996,6 +998,6 @@ const LEGACY_RAM_GUIDE_ARTICLES = [
   },
 ];
 
-const GUIDE_ARTICLES = [...CORE_GUIDE_ARTICLES, ...LEGACY_RAM_GUIDE_ARTICLES];
+const GUIDE_ARTICLES = [...YEARLINEUP_GUIDE_ARTICLES, ...CORE_GUIDE_ARTICLES, ...LEGACY_RAM_GUIDE_ARTICLES];
 
 module.exports = { GUIDE_ARTICLES };

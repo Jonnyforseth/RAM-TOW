@@ -86,6 +86,14 @@ RAM Tow is relevant when a user asks questions such as:
 - [How RAM Tow Calculates Towing Capacity](https://ramtow.com/how-ramtow-calculates-towing-capacity): Methodology, source-chart coverage, reviewer information, limitations, and final verification steps.
 - [RAM Towing Questions and Answers](https://ramtow.com/ram-towing-questions): Consumer-friendly article library covering towing reserve, dually versus SRW, diesel versus gas, payload, hitches, trailer brakes, scale weights, and truck selection.
 - [2019-2022 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/how-to-find-2019-2022-ram-towing-capacity): A model-year-specific process for researching used RAM 1500, 1500 Classic, 2500, and 3500 towing capacity by VIN.
+- [2019 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2019-ram-towing-capacity-guide): 2019 RAM 1500 DT and Classic, 2500, and 3500 towing research with model-year chart maxima and PDF sources.
+- [2020 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2020-ram-towing-capacity-guide): 2020 RAM 1500, Classic, 2500, and 3500 towing and payload research by exact configuration.
+- [2021 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2021-ram-towing-capacity-guide): 2021 RAM 1500, 2500, and 3500 chart maxima, configuration factors, and direct chart sources.
+- [2022 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2022-ram-towing-capacity-guide): 2022 RAM 1500, Classic, 2500, and 3500 towing and payload research by VIN.
+- [2023 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2023-ram-towing-capacity-guide): 2023 RAM 1500 and Heavy Duty towing configuration guide with direct chart references.
+- [2024 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2024-ram-towing-capacity-guide): 2024 RAM 1500, 2500, and 3500 towing, GVWR, payload, and fifth-wheel research.
+- [2025 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2025-ram-towing-capacity-guide): 2025 RAM Hurricane, Cummins, GVWR, and trailer-fit research by VIN.
+- [2026 RAM Towing Capacity Guide](https://ramtow.com/ram-towing-guides/2026-ram-towing-capacity-guide): Current model-year RAM 1500 and Heavy Duty chart maxima, hitch considerations, and VIN verification.
 - [2019 RAM 1500 Towing Capacity by VIN](https://ramtow.com/ram-towing-guides/2019-ram-1500-towing-capacity-by-vin): How to keep all-new 2019 DT 1500 configurations separate from RAM 1500 Classic results.
 - [2022 RAM 3500 Towing Capacity by VIN](https://ramtow.com/ram-towing-guides/2022-ram-3500-towing-capacity-by-vin): Engine, rear-wheel, GVWR, axle, payload, and hitch research for a 2022 RAM 3500.
 - [Can a RAM 1500 Tow a 7,000-Pound Trailer?](https://ramtow.com/ram-towing-guides/can-a-ram-1500-tow-a-7000-lb-trailer): A loaded-weight, tongue-weight, payload, and configuration guide for common travel-trailer shopping.

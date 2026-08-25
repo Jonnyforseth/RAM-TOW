@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=e8688463fbaf">
+    <link rel="stylesheet" href="/styles.css?v=b02a2c7ee71d">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -42,7 +42,7 @@
     <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://ramtow.com/#website","name":"RAM Tow","url":"https://ramtow.com/","description":"VIN-based RAM towing capacity, payload, and trailer-fit research using model-year RAM towing charts."},{"@type":"Organization","@id":"https://ramtow.com/#organization","name":"RAM Tow","url":"https://ramtow.com/","logo":"https://ramtow.com/assets/ram-tow-logo.png"}]}</script>
     <!-- RAM TOW SITE IDENTITY END -->
     <!-- RAM TOW NAV START -->
-    <script defer src="/site-nav.js?v=e8688463fbaf"></script>
+    <script defer src="/site-nav.js?v=b02a2c7ee71d"></script>
     <!-- RAM TOW NAV END -->
     <!-- RAM TOW GA START -->
     <!-- Google tag (gtag.js) -->
@@ -93,6 +93,14 @@
           <div id="vin-status" class="status hidden"></div>
 
           <div id="vin-results" class="results hidden">
+            <div id="vin-unit-control" class="vin-unit-control hidden" aria-live="polite">
+              <span>Canadian-market RAM detected</span>
+              <span class="vin-unit-note">Display towing and payload in:</span>
+              <div class="vin-unit-buttons" role="group" aria-label="Capacity measurement units">
+                <button type="button" class="vin-unit-button is-active" data-vin-unit="lb" aria-pressed="true">LB</button>
+                <button type="button" class="vin-unit-button" data-vin-unit="kg" aria-pressed="false">KG</button>
+              </div>
+            </div>
             <div class="result-two-up">
               <article class="metric-card">
                 <p class="metric-label">Tow Capacity</p>
@@ -106,29 +114,6 @@
                 <div id="payload-detail" class="metric-detail"></div>
               </article>
             </div>
-
-            <div class="result-block">
-              <div class="result-heading">
-                <h3>Detected truck setup</h3>
-                <a id="sticker-link" href="#" target="_blank" rel="noreferrer">Open sticker PDF</a>
-              </div>
-              <div id="detected-pills" class="pill-row"></div>
-            </div>
-
-            <section id="vin-perkins-cta" class="inventory-cta hidden" aria-live="polite">
-              <span class="inventory-label">Inventory connections powered by Perkins Motors</span>
-              <h3>Find This Setup at Perkins Motors</h3>
-              <p id="vin-perkins-copy"></p>
-              <p class="inventory-delivery-note">Buy from home: Perkins Motors offers free delivery and remote purchase anywhere in Colorado. Paid delivery is available throughout the continental U.S. through <a href="https://runbuggy.com/" target="_blank" rel="noreferrer">RunBuggy</a>.</p>
-              <a id="vin-perkins-link" class="button button-secondary" href="#" target="_blank" rel="noreferrer">Find This Setup at Perkins Motors</a>
-            </section>
-
-            <section id="vin-trade-cta" class="inventory-cta trade-cta hidden" aria-live="polite">
-              <span class="inventory-label">Trade path</span>
-              <h3>Need more towing capacity?</h3>
-              <p id="vin-trade-copy">See RAM trucks at Perkins Motors that fit your trailer.</p>
-              <a id="vin-trade-link" class="button button-primary" href="#" target="_blank" rel="noreferrer">Compare with available trucks</a>
-            </section>
 
             <section id="vin-refinement" class="vin-refinement hidden" aria-live="polite">
               <h3>Confirm Exact Rating</h3>
@@ -151,6 +136,29 @@
                   <select id="vin-gvwr-select"></select>
                 </label>
               </div>
+            </section>
+
+            <div class="result-block">
+              <div class="result-heading">
+                <h3>Detected truck setup</h3>
+                <a id="sticker-link" href="#" target="_blank" rel="noreferrer">Open sticker PDF</a>
+              </div>
+              <div id="detected-pills" class="pill-row"></div>
+            </div>
+
+            <section id="vin-perkins-cta" class="inventory-cta hidden" aria-live="polite">
+              <span class="inventory-label">Inventory connections powered by Perkins Motors</span>
+              <h3>Find This Setup at Perkins Motors</h3>
+              <p id="vin-perkins-copy"></p>
+              <p class="inventory-delivery-note">Buy from home: Perkins Motors offers free delivery and remote purchase anywhere in Colorado. Paid delivery is available throughout the continental U.S. through <a href="https://runbuggy.com/" target="_blank" rel="noreferrer">RunBuggy</a>.</p>
+              <a id="vin-perkins-link" class="button button-secondary" href="#" target="_blank" rel="noreferrer">Find This Setup at Perkins Motors</a>
+            </section>
+
+            <section id="vin-trade-cta" class="inventory-cta trade-cta hidden" aria-live="polite">
+              <span class="inventory-label">Trade path</span>
+              <h3>Need more towing capacity?</h3>
+              <p id="vin-trade-copy">See RAM trucks at Perkins Motors that fit your trailer.</p>
+              <a id="vin-trade-link" class="button button-primary" href="#" target="_blank" rel="noreferrer">Compare with available trucks</a>
             </section>
 
             <div class="vin-disclaimer">
@@ -230,6 +238,6 @@
     </div>
     <script src="/vendor/zxing-browser.min.js"></script>
     <script src="/vendor/tesseract.min.js"></script>
-    <script src="/app.js?v=e8688463fbaf"></script>
+    <script src="/app.js?v=b02a2c7ee71d"></script>
   </body>
 </html>

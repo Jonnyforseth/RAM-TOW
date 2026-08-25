@@ -28,6 +28,8 @@ const vinPerkinsLink = document.querySelector('#vin-perkins-link');
 const vinTradeCta = document.querySelector('#vin-trade-cta');
 const vinTradeCopy = document.querySelector('#vin-trade-copy');
 const vinTradeLink = document.querySelector('#vin-trade-link');
+const vinUnitControl = document.querySelector('#vin-unit-control');
+const vinUnitButtons = [...document.querySelectorAll('[data-vin-unit]')];
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -119,6 +121,9 @@ let vinOverrideOptions = null;
 let vinRefinementRequest = 0;
 let vinRefinementAvailable = false;
 let vinTradeRequest = 0;
+let vinMeasurementUnit = 'lb';
+let vinLastResponse = null;
+let vinDisplayedSpec = null;
 
 function renderInsight(item) {
   return `
@@ -176,6 +181,30 @@ function formatCapacityRange(min, max) {
   return `${formatNumber(min)}-${formatNumber(max)} lb`;
 }
 
+function formatVinMass(value) {
+  const pounds = Number(value);
+  if (!Number.isFinite(pounds)) {
+    return '-';
+  }
+  if (vinMeasurementUnit === 'kg') {
+    return `${formatNumber(Math.round(pounds * 0.45359237))} kg`;
+  }
+  return `${formatNumber(pounds)} lb`;
+}
+
+function formatVinMassRange(min, max) {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return '-';
+  }
+  if (min === max) {
+    return formatVinMass(min);
+  }
+  if (vinMeasurementUnit === 'kg') {
+    return `${formatNumber(Math.round(min * 0.45359237))}-${formatNumber(Math.round(max * 0.45359237))} kg`;
+  }
+  return `${formatNumber(min)}-${formatNumber(max)} lb`;
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -202,8 +231,9 @@ function renderDetectedSpec(spec) {
     ['Cab', spec.cab],
     ['Bed', spec.bed],
     ['Axle', spec.axleRatio],
-    ['GVWR', spec.gvwr ? `${formatNumber(spec.gvwr)} lb` : null],
-    ['Chart GVWR', !spec.gvwr && spec.inferredGvwr ? `${formatNumber(spec.inferredGvwr)} lb` : null],
+    ['Market', spec.market === 'CA' ? 'Canada' : null],
+    ['GVWR', spec.gvwr ? formatVinMass(spec.gvwr) : null],
+    ['Chart GVWR', !spec.gvwr && spec.inferredGvwr ? formatVinMass(spec.inferredGvwr) : null],
     ['Rear Wheels', spec.rearWheels],
   ].filter(([, value]) => value);
 
@@ -228,8 +258,8 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, dete
   const showRange = summary?.isRange && Number.isFinite(summary?.min) && Number.isFinite(summary?.max);
   const resolvedGvwr = detectedSpec?.gvwr || detectedSpec?.inferredGvwr;
   capacityNode.textContent = showRange
-    ? formatCapacityRange(summary.min, summary.max).toUpperCase()
-    : formatCapacity(kind === 'tow' ? match.maxTow : match.maxPayload).toUpperCase();
+    ? formatVinMassRange(summary.min, summary.max).toUpperCase()
+    : formatVinMass(kind === 'tow' ? match.maxTow : match.maxPayload).toUpperCase();
 
   const canShowAxle = match.axleRatio && (!showRange || detectedSpec?.axleRatio);
   const canShowGvwr = match.gvwr && (!showRange || resolvedGvwr);
@@ -238,10 +268,10 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, dete
     `${detectedSpec?.year || 'RAM'} ${match.model} ${match.cab} ${match.bed} ${match.drive}`,
     match.engine,
     canShowAxle ? `Axle ${match.axleRatio}` : null,
-    canShowGvwr ? `${detectedSpec?.inferredGvwr && !detectedSpec?.gvwr ? 'Chart GVWR' : 'GVWR'} ${formatNumber(match.gvwr)} lb` : null,
-    canShowGcwr ? `GCWR ${formatNumber(match.gcwr)} lb` : null,
+    canShowGvwr ? `${detectedSpec?.inferredGvwr && !detectedSpec?.gvwr ? 'Chart GVWR' : 'GVWR'} ${formatVinMass(match.gvwr)}` : null,
+    canShowGcwr ? `GCWR ${formatVinMass(match.gcwr)}` : null,
     match.trim || match.trimHint ? `Trim hint: ${match.trim || match.trimHint}` : null,
-    showRange ? `<span class="metric-note">${escapeHtml(summary.note || 'Confirm the exact axle ratio and door-sticker GVWR before towing.')}</span>` : null,
+    (showRange || match.canadianTrimFallback) ? `<span class="metric-note">${escapeHtml(summary.note || 'Confirm the exact axle ratio and door-sticker GVWR before towing.')}</span>` : null,
   ].filter(Boolean);
   detailNode.innerHTML = lines.join('<br>');
 }
@@ -428,16 +458,20 @@ function renderVinRefinement(response, spec) {
     renderRefinementOptions(vinAxleSelect, axleOptions, spec.axleRatio, 'Select axle ratio');
   }
   if (showGvwr) {
-    renderRefinementOptions(vinGvwrSelect, gvwrOptions, spec.gvwr, 'Select GVWR', (value) => `${formatNumber(Number(value))} lb`);
+    renderRefinementOptions(vinGvwrSelect, gvwrOptions, spec.gvwr, 'Select GVWR', (value) => formatVinMass(Number(value)));
   }
 
   vinRefinement.classList.remove('hidden');
 }
 
 function renderVinResponse(response, detectedSpec = response.detectedSpec) {
+  vinLastResponse = response;
+  vinDisplayedSpec = detectedSpec;
+  vinUnitControl?.classList.toggle('hidden', detectedSpec?.market !== 'CA');
   if (response.pdfUrl) {
     stickerLink.href = response.pdfUrl;
   }
+  stickerLink?.classList.toggle('hidden', !response.pdfUrl);
   renderDetectedSpec(detectedSpec);
   renderPrimaryMatch(response.towMatch, towCapacity, towDetail, 'tow', response.towSummary, detectedSpec);
   renderPrimaryMatch(response.payloadMatch, payloadCapacity, payloadDetail, 'payload', response.payloadSummary, detectedSpec);
@@ -449,12 +483,20 @@ function renderVinResponse(response, detectedSpec = response.detectedSpec) {
   if (detectedSpec?.stickerAvailable === false) {
     showStatus(
       vinStatus,
-      'Chrysler did not return a window sticker for this VIN. This result uses the VIN decode for cab, engine, drive, and bed, then falls back to the safest matching chart row until axle ratio and exact sticker data can be confirmed.'
+      detectedSpec?.market === 'CA'
+        ? 'The Canadian window sticker was not available from Chrysler. This result uses the VIN decode and needs door-sticker confirmation for any unresolved chart details.'
+        : 'Chrysler did not return a window sticker for this VIN. This result uses the VIN decode for cab, engine, drive, and bed, then falls back to the safest matching chart row until axle ratio and exact sticker data can be confirmed.'
     );
   }
 }
 
 function showVinLookupResponse(response) {
+  vinMeasurementUnit = 'lb';
+  for (const button of vinUnitButtons) {
+    const isSelected = button.dataset.vinUnit === vinMeasurementUnit;
+    button.classList.toggle('is-active', isSelected);
+    button.setAttribute('aria-pressed', String(isSelected));
+  }
   vinBaseSpec = { ...response.detectedSpec };
   vinOverrideOptions = response.overrideOptions || {};
   vinRefinementAvailable = Boolean(
@@ -468,6 +510,24 @@ function showVinLookupResponse(response) {
     chart_year: Number(response.chartYear) || undefined,
     ram_model: String(vinBaseSpec.model || 'unknown'),
     chart_match: Boolean(response.towSummary?.value || response.towMatch),
+  });
+}
+
+for (const button of vinUnitButtons) {
+  button.addEventListener('click', () => {
+    const unit = button.dataset.vinUnit;
+    if (unit !== 'lb' && unit !== 'kg') {
+      return;
+    }
+    vinMeasurementUnit = unit;
+    for (const unitButton of vinUnitButtons) {
+      const isSelected = unitButton.dataset.vinUnit === unit;
+      unitButton.classList.toggle('is-active', isSelected);
+      unitButton.setAttribute('aria-pressed', String(isSelected));
+    }
+    if (vinLastResponse && vinDisplayedSpec) {
+      renderVinResponse(vinLastResponse, vinDisplayedSpec);
+    }
   });
 }
 
