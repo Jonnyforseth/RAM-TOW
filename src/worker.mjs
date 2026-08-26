@@ -2,6 +2,7 @@ import { onRequestGet as onHealthGet } from '../functions/api/health.js';
 import { onRequestGet as onLookupVinGet } from '../functions/api/lookup-vin/[vin].js';
 import { onRequestPost as onMatchConfigPost } from '../functions/api/match-config.js';
 import { onRequestPost as onReverseLookupPost } from '../functions/api/reverse-lookup.js';
+import { onRequestPost as onPerkinsCapableInventoryPost } from '../functions/api/perkins-capable-inventory.js';
 
 const STATIC_LANDING_PAGES = new Map([
   ['/ram-2500-towing-capacity', '/ram-2500-towing-capacity/index.html'],
@@ -102,6 +103,13 @@ export default {
         return methodNotAllowed();
       }
       return onReverseLookupPost({ request, env });
+    }
+
+    if (pathname === '/api/perkins-capable-inventory') {
+      if (request.method !== 'POST') {
+        return methodNotAllowed();
+      }
+      return onPerkinsCapableInventoryPost({ request, env });
     }
 
     const staticPage = STATIC_LANDING_PAGES.get(pathname);

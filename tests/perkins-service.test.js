@@ -5,12 +5,21 @@ const {
   applyVerifiedCapacities,
   buildFilteredInventoryUrl,
   buildCandidateProfile,
+  dedupeInventoryByVin,
+  extractMileage,
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
+  sortVerifiedInventoryRows,
 } = require('../src/lib/perkins-service');
 const { getVinInventoryLink } = require('../src/lib/inventory-link-service');
+
+test('extractMileage prefers vehicle structured data and supports Perkins mileage markup', () => {
+  assert.equal(extractMileage('', { mileageFromOdometer: { value: 1858 } }), 1858);
+  assert.equal(extractMileage('<dl><dt>42,605</dt><dd>Miles</dd></dl>', null), 42605);
+  assert.equal(extractMileage('', null), null);
+});
 
 test('VIN lookups for 2025 and older route to the matching used RAM model inventory', async () => {
   const link = await getVinInventoryLink({ year: 2025, model: '2500', engine: '6.7L Cummins HO' }, {});
@@ -230,6 +239,27 @@ test('VIN-verified capacities can disqualify a reverse lookup truck that chart m
   assert.equal(merged.maxPayload, 1630);
   assert.equal(merged.drive, '4x4');
   assert.equal(meetsTrailerRequirements(merged, { trailerWeight: 10150, tongueWeight: 1041 }), false);
+});
+
+test('lowest-price inventory rows sort by listed price and do not repeat stock numbers', () => {
+  const results = sortVerifiedInventoryRows([
+    { maxTow: 12000, maxPayload: 2000, inventoryMatch: { stockNumber: 'A', currentPrice: 53000 } },
+    { maxTow: 13000, maxPayload: 2100, inventoryMatch: { stockNumber: 'B', currentPrice: 49000 } },
+    { maxTow: 12500, maxPayload: 2050, inventoryMatch: { stockNumber: 'A', currentPrice: 48000 } },
+  ]);
+
+  assert.deepEqual(results.map((row) => row.inventoryMatch.stockNumber), ['A', 'B']);
+});
+
+test('certified listings take precedence when the same VIN is also listed as used', () => {
+  const inventory = dedupeInventoryByVin([
+    { inventoryVin: '1C6SRFFT6TN229347', inventoryUrl: 'https://perkinsmotors.com/used', condition: 'used' },
+    { inventoryVin: '1C6SRFFT6TN229347', inventoryUrl: 'https://perkinsmotors.com/certified', condition: 'certified' },
+    { inventoryVin: '3C6SRFGP4T4178622', inventoryUrl: 'https://perkinsmotors.com/new', condition: 'new' },
+  ]);
+
+  assert.equal(inventory.length, 2);
+  assert.equal(inventory.find((item) => item.inventoryVin === '1C6SRFFT6TN229347').condition, 'certified');
 });
 
 test('getMatchingPerkinsEngineFilters includes both HEMI aliases for the 5.7L eTorque engine', () => {

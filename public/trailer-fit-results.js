@@ -3,6 +3,11 @@ const statusNode = document.querySelector('#fit-status');
 const summaryNode = document.querySelector('#fit-summary');
 const insightsNode = document.querySelector('#fit-insights');
 const resultsNode = document.querySelector('#fit-results');
+const inventoryNode = document.querySelector('#fit-inventory');
+const inventoryButton = document.querySelector('#fit-inventory-button');
+const inventoryProgressNode = document.querySelector('#fit-inventory-progress');
+const inventoryStatusNode = document.querySelector('#fit-inventory-status');
+const inventoryResultsNode = document.querySelector('#fit-inventory-results');
 
 function trackAnalytics(eventName, parameters = {}) {
   if (typeof window.gtag === 'function') {
@@ -115,6 +120,27 @@ function formatNumber(value) {
 
 function formatPounds(value) {
   return `${formatNumber(value)} lb`;
+}
+
+function formatPrice(value) {
+  const price = Number(value);
+  return Number.isFinite(price) && price > 0
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price)
+    : 'Call for price';
+}
+
+function formatInventoryCondition(value) {
+  const condition = String(value || '').toLowerCase();
+  if (condition === 'certified') return 'Certified Pre-Owned';
+  if (condition === 'used') return 'Used';
+  return 'New';
+}
+
+function formatMileage(value) {
+  const mileage = Number(value);
+  return Number.isFinite(mileage) && mileage >= 0
+    ? `${formatNumber(mileage)} mi`
+    : null;
 }
 
 function getTarget() {
@@ -278,6 +304,88 @@ function renderSummary(rows, target) {
   summaryNode.classList.remove('hidden');
 }
 
+function renderInventoryRow(row, target) {
+  const inventory = row.inventoryMatch || {};
+  const mileage = String(inventory.condition || '').toLowerCase() === 'new'
+    ? null
+    : formatMileage(inventory.mileage);
+  const setup = [row.engine, row.drive, row.cab, row.bed, row.axleRatio ? `Axle ${row.axleRatio}` : null]
+    .filter(Boolean)
+    .join(' · ');
+  return `
+    <article class="fit-inventory-card">
+      <p class="fit-card-kicker">${escapeHtml(formatInventoryCondition(inventory.condition))} · VIN-verified capacity</p>
+      <h3>${escapeHtml(inventory.inventoryTitle || `RAM ${row.model}`)}</h3>
+      <p class="fit-inventory-price">${escapeHtml(formatPrice(inventory.currentPrice))}</p>
+      <p class="fit-inventory-stock">Stock ${escapeHtml(inventory.stockNumber || 'available')}${mileage ? ` · ${escapeHtml(mileage)}` : ''} · VIN verified</p>
+      <p class="fit-inventory-setup">${escapeHtml(setup || 'Configuration verified by VIN')}</p>
+      <dl class="fit-inventory-capacity">
+        <div><dt>Tow capacity</dt><dd>${escapeHtml(formatPounds(row.maxTow))}</dd></div>
+        <div><dt>Payload capacity</dt><dd>${escapeHtml(formatPounds(row.maxPayload))}</dd></div>
+      </dl>
+      <p class="fit-inventory-room">${escapeHtml(formatPounds(row.towSurplus))} towing room · ${escapeHtml(formatPounds(row.payloadSurplus))} payload room above your target.</p>
+      <a class="button button-secondary fit-shop-button" href="${escapeHtml(inventory.inventoryUrl || '#')}" target="_blank" rel="noreferrer">View This Truck at Perkins Motors</a>
+      <a class="fit-call-link" href="/?vin=${encodeURIComponent(inventory.inventoryVin || '')}#vin-form">Verify this VIN in RAM Tow</a>
+    </article>
+  `;
+}
+
+function setInventoryLoading(isLoading) {
+  inventoryNode?.classList.toggle('is-loading', isLoading);
+  inventoryNode?.setAttribute('aria-busy', String(isLoading));
+  inventoryProgressNode?.classList.toggle('hidden', !isLoading);
+  inventoryProgressNode?.setAttribute('aria-hidden', String(!isLoading));
+}
+
+async function loadLowestPricedInventory() {
+  const target = getTarget();
+  if (!target || !inventoryButton || !inventoryStatusNode || !inventoryResultsNode) {
+    return;
+  }
+
+  inventoryButton.disabled = true;
+  inventoryButton.textContent = 'Checking New, Used & Certified Inventory...';
+  setInventoryLoading(true);
+  inventoryStatusNode.classList.remove('hidden', 'fit-status-error');
+  inventoryStatusNode.textContent = 'Reading current Perkins RAM listings and VIN-verifying towing and payload. This can take a moment.';
+  inventoryResultsNode.classList.add('hidden');
+  inventoryResultsNode.innerHTML = '';
+
+  try {
+    const response = await fetch('/api/perkins-capable-inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(target),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || 'Unable to check Perkins inventory right now.');
+    }
+
+    const rows = payload.results || [];
+    trackAnalytics('perkins_verified_inventory_loaded', {
+      hitch_type: target.hitchType,
+      model_preference: target.modelPreference || 'any',
+      result_count: rows.length,
+    });
+    if (!rows.length) {
+      inventoryStatusNode.textContent = `We checked ${payload.checkedCount || 0} current Perkins listings and did not find a VIN-verified truck that clears this full trailer and payload target right now.`;
+      return;
+    }
+
+    inventoryStatusNode.textContent = `${rows.length} lowest-priced VIN-verified option${rows.length === 1 ? '' : 's'} shown from ${payload.verifiedCount} capable current Perkins listing${payload.verifiedCount === 1 ? '' : 's'}. Prices and availability were checked ${new Date(payload.checkedAt).toLocaleString('en-US')}.`;
+    inventoryResultsNode.innerHTML = rows.map((row) => renderInventoryRow(row, target)).join('');
+    inventoryResultsNode.classList.remove('hidden');
+  } catch (error) {
+    inventoryStatusNode.classList.add('fit-status-error');
+    inventoryStatusNode.textContent = error.message;
+  } finally {
+    setInventoryLoading(false);
+    inventoryButton.disabled = false;
+    inventoryButton.textContent = 'Refresh Verified Inventory';
+  }
+}
+
 async function loadRecommendations() {
   const target = getTarget();
   if (!target) {
@@ -328,10 +436,15 @@ async function loadRecommendations() {
     renderSummary(rows, target);
     resultsNode.innerHTML = rows.map((row, index) => renderRecommendation(row, target, index)).join('');
     resultsNode.classList.remove('hidden');
+    inventoryNode?.classList.remove('hidden');
   } catch (error) {
     statusNode.classList.add('fit-status-error');
     statusNode.innerHTML = `${escapeHtml(error.message)} <a href="/">Return to the calculator</a> and try again.`;
   }
 }
+
+inventoryButton?.addEventListener('click', () => {
+  void loadLowestPricedInventory();
+});
 
 void loadRecommendations();

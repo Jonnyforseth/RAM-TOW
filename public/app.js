@@ -1353,6 +1353,14 @@ function restoreTrailerTarget() {
   }
 }
 
+function restoreVinFromQuery() {
+  const vin = normalizeManualVin(new URLSearchParams(window.location.search).get('vin'));
+  if (!vin || !vinInput) {
+    return;
+  }
+  vinInput.value = vin;
+}
+
 document.addEventListener('click', (event) => {
   const link = event.target.closest('[data-trailer-weight][data-tongue-weight]');
   if (!link) {
@@ -1372,6 +1380,7 @@ if (hitchTypeInput) {
 }
 
 restoreTrailerTarget();
+restoreVinFromQuery();
 syncHitchTypeUi();
 
 window.addEventListener('pageshow', () => {

@@ -14,7 +14,14 @@ const MODEL_LISTING_URLS = {
   '3500': 'https://perkinsmotors.com/sale/ram-3500-colorado-springs-co',
 };
 
-const CACHE_TTL_MS = 15 * 60 * 1000;
+const PREOWNED_INVENTORY_URLS = {
+  used: 'https://perkinsmotors.com/sale/used-cars-colorado-springs-co',
+  certified: 'https://perkinsmotors.com/sale/certified-cars-colorado-springs-co',
+};
+
+// Inventory price and availability change often enough that the shopper-facing
+// verification cache should stay short, while still protecting both source sites.
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_LISTING_PAGES = 6;
 const DETAIL_CONCURRENCY = 6;
 const MAX_RESULTS = 12;
@@ -22,6 +29,7 @@ const MAX_PER_TRIM = 2;
 const VERIFY_CONCURRENCY = 4;
 
 const inventoryCache = new Map();
+const inventorySourceCache = new Map();
 const verificationCache = new Map();
 const filterCache = new Map();
 
@@ -294,7 +302,17 @@ function extractVehicleJsonLd(html) {
   return null;
 }
 
-function buildInventoryItem(url, html) {
+function extractMileage(html, vehicle) {
+  const structuredMileage = toNumber(vehicle?.mileageFromOdometer?.value ?? vehicle?.mileageFromOdometer);
+  if (Number.isFinite(structuredMileage) && structuredMileage >= 0) {
+    return structuredMileage;
+  }
+
+  const mileageMarkup = html.match(/<dt[^>]*>\s*([\d,]+)\s*<\/dt>\s*<dd[^>]*>\s*(?:miles?|odometer)\s*<\/dd>/i)?.[1];
+  return toNumber(mileageMarkup);
+}
+
+function buildInventoryItem(url, html, condition = 'new') {
   const title = extractTitle(html);
   const text = stripTags(html);
   const vehicle = extractVehicleJsonLd(html);
@@ -320,6 +338,8 @@ function buildInventoryItem(url, html) {
     stockNumber: extractStockNumber(html) || vehicle?.sku || null,
     inventoryUrl: url,
     inventoryVin: extractVin(html, url) || vehicle?.vehicleIdentificationNumber || null,
+    condition,
+    mileage: extractMileage(html, vehicle),
     drive: normalizeDrive(`${drivetrainValue || ''} ${title} ${vehicle?.driveWheelConfiguration || ''}`),
     cab: normalizeCab(`${cabValue || ''} ${title}`),
     bed,
@@ -347,34 +367,86 @@ async function mapWithConcurrency(items, limit, iteratee) {
   return results;
 }
 
+async function loadInventorySource(cacheKey, url, condition) {
+  const cached = inventorySourceCache.get(cacheKey);
+  if (cached?.items && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.items;
+  }
+  if (cached?.pending) {
+    return cached.pending;
+  }
+
+  const pending = (async () => {
+    const detailUrls = await getListingDetailUrls(url);
+    const items = await mapWithConcurrency(detailUrls, DETAIL_CONCURRENCY, async (detailUrl) => {
+      try {
+        const html = await fetchText(detailUrl);
+        return buildInventoryItem(detailUrl, html, condition);
+      } catch (_error) {
+        return null;
+      }
+    });
+    const cleanedItems = items.filter(Boolean);
+    inventorySourceCache.set(cacheKey, { fetchedAt: Date.now(), items: cleanedItems });
+    return cleanedItems;
+  })();
+
+  inventorySourceCache.set(cacheKey, { pending });
+  try {
+    return await pending;
+  } catch (error) {
+    inventorySourceCache.delete(cacheKey);
+    throw error;
+  }
+}
+
+function dedupeInventoryByVin(items) {
+  const byVin = new Map();
+  for (const item of items) {
+    const key = item.inventoryVin || item.inventoryUrl;
+    const current = byVin.get(key);
+    // A truck that appears in both Used and Certified lists should be labeled Certified.
+    if (!current || item.condition === 'certified') {
+      byVin.set(key, item);
+    }
+  }
+  return [...byVin.values()];
+}
+
 async function loadModelInventory(model) {
-  const url = MODEL_LISTING_URLS[model];
-  if (!url) {
+  const newUrl = MODEL_LISTING_URLS[model];
+  if (!newUrl) {
     return [];
   }
 
   const cached = inventoryCache.get(model);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+  if (cached?.items && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.items;
   }
+  if (cached?.pending) {
+    return cached.pending;
+  }
 
-  const detailUrls = await getListingDetailUrls(url);
-  const items = await mapWithConcurrency(detailUrls, DETAIL_CONCURRENCY, async (detailUrl) => {
-    try {
-      const html = await fetchText(detailUrl);
-      return buildInventoryItem(detailUrl, html);
-    } catch (_error) {
-      return null;
-    }
-  });
+  const pending = (async () => {
+    const [newItems, usedItems, certifiedItems] = await Promise.all([
+      loadInventorySource(`new:${model}`, newUrl, 'new'),
+      loadInventorySource('used', PREOWNED_INVENTORY_URLS.used, 'used'),
+      loadInventorySource('certified', PREOWNED_INVENTORY_URLS.certified, 'certified'),
+    ]);
+    const items = dedupeInventoryByVin(
+      [...newItems, ...usedItems, ...certifiedItems].filter((item) => item.model === model)
+    );
+    inventoryCache.set(model, { fetchedAt: Date.now(), items });
+    return items;
+  })();
 
-  const cleanedItems = items.filter((item) => item && item.model === model);
-  inventoryCache.set(model, {
-    fetchedAt: Date.now(),
-    items: cleanedItems,
-  });
-
-  return cleanedItems;
+  inventoryCache.set(model, { pending });
+  try {
+    return await pending;
+  } catch (error) {
+    inventoryCache.delete(model);
+    throw error;
+  }
 }
 
 function extractFilterValues(html, filterKey) {
@@ -921,6 +993,8 @@ function createVerifiedInventoryRow(item, verified, requirements) {
       inventoryTitle: item.title,
       inventoryVin: item.inventoryVin,
       currentPrice: item.price,
+      condition: item.condition || 'used',
+      mileage: item.mileage ?? null,
       matchLabel: 'VIN-verified Perkins match',
       matchScore: 100,
       trimKey: item.trimKey || normalizeTrim(item.trim || item.title),
@@ -979,6 +1053,37 @@ function sortAndLimitResults(results) {
   return trimmed;
 }
 
+function sortVerifiedInventoryRows(results, limit = MAX_RESULTS) {
+  const sorted = [...results].sort((left, right) => {
+    const leftPrice = left.inventoryMatch?.currentPrice ?? Number.POSITIVE_INFINITY;
+    const rightPrice = right.inventoryMatch?.currentPrice ?? Number.POSITIVE_INFINITY;
+    if (leftPrice !== rightPrice) {
+      return leftPrice - rightPrice;
+    }
+    if (left.maxTow !== right.maxTow) {
+      return left.maxTow - right.maxTow;
+    }
+    return left.maxPayload - right.maxPayload;
+  });
+
+  const seenStocks = new Set();
+  const uniqueRows = [];
+  for (const row of sorted) {
+    const stockNumber = row.inventoryMatch?.stockNumber;
+    if (stockNumber && seenStocks.has(stockNumber)) {
+      continue;
+    }
+    if (stockNumber) {
+      seenStocks.add(stockNumber);
+    }
+    uniqueRows.push(row);
+    if (uniqueRows.length >= limit) {
+      break;
+    }
+  }
+  return uniqueRows;
+}
+
 async function attachInventoryMatches(results, requirements = {}) {
   const models = unique(results.map((row) => row.model).filter((model) => MODEL_LISTING_URLS[model]));
   const inventoryEntries = await Promise.all(
@@ -1016,15 +1121,52 @@ async function attachInventoryMatches(results, requirements = {}) {
   };
 }
 
+async function findLowestPricedVerifiedInventory(requirements = {}) {
+  const requestedModel = String(requirements.modelPreference || '').trim();
+  const models = ['1500', '2500', '3500'].filter((model) => !requestedModel || model === requestedModel);
+  const inventoryEntries = await Promise.all(
+    models.map(async (model) => [model, await loadModelInventory(model)])
+  );
+  const allInventory = Object.fromEntries(inventoryEntries);
+
+  // The listings are only pre-screened by model and VIN presence. The final keep/reject
+  // decision comes from the same sticker-and-chart lookup used by VIN Lookup.
+  const candidates = models.flatMap((model) =>
+    (allInventory[model] || []).filter((item) => item.inventoryVin)
+  );
+
+  const verified = await mapWithConcurrency(candidates, VERIFY_CONCURRENCY, async (item) => {
+    const capabilities = await verifyInventoryCapabilities({ inventoryVin: item.inventoryVin });
+    if (!capabilities) {
+      return null;
+    }
+    const verifiedRow = createVerifiedInventoryRow(item, capabilities, requirements);
+    return meetsTrailerRequirements(verifiedRow, requirements) ? verifiedRow : null;
+  });
+
+  const matchedRows = verified.filter(Boolean);
+  return {
+    source: 'https://perkinsmotors.com',
+    checkedAt: new Date().toISOString(),
+    checkedCount: candidates.length,
+    verifiedCount: matchedRows.length,
+    results: sortVerifiedInventoryRows(matchedRows),
+  };
+}
+
 module.exports = {
   applyVerifiedCapacities,
   attachInventoryMatches,
   attachInventorySearchLinks,
   buildFilteredInventoryUrl,
   buildCandidateProfile,
+  dedupeInventoryByVin,
+  extractMileage,
+  findLowestPricedVerifiedInventory,
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
   scoreInventoryMatch,
+  sortVerifiedInventoryRows,
 };
