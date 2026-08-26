@@ -242,6 +242,16 @@ function renderDetectedSpec(spec) {
   }
 }
 
+function displayMatchedEngine(match, detectedSpec) {
+  // Older RAM chart rows use an eTorque family label for both 5.7L variants.
+  // The sticker-derived display value preserves whether this particular truck
+  // is the standard HEMI or the eTorque model.
+  if (match?.engine === '5.7L HEMI V8 eTorque' && detectedSpec?.displayEngine) {
+    return detectedSpec.displayEngine;
+  }
+  return match?.engine || detectedSpec?.displayEngine || detectedSpec?.engine || null;
+}
+
 function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, detectedSpec) {
   if (summary?.selectionMismatch) {
     capacityNode.textContent = 'No chart row';
@@ -266,7 +276,7 @@ function renderPrimaryMatch(match, capacityNode, detailNode, kind, summary, dete
   const canShowGcwr = match.gcwr && !showRange;
   const lines = [
     `${detectedSpec?.year || 'RAM'} ${match.model} ${match.cab} ${match.bed} ${match.drive}`,
-    match.engine,
+    displayMatchedEngine(match, detectedSpec),
     canShowAxle ? `Axle ${match.axleRatio}` : null,
     canShowGvwr ? `${detectedSpec?.inferredGvwr && !detectedSpec?.gvwr ? 'Chart GVWR' : 'GVWR'} ${formatVinMass(match.gvwr)}` : null,
     canShowGcwr ? `GCWR ${formatVinMass(match.gcwr)}` : null,
