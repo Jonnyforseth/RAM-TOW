@@ -1183,9 +1183,17 @@ async function buildVerifiedInventorySnapshot() {
 function filterVerifiedInventorySnapshot(snapshot, requirements = {}) {
   const requestedModel = String(requirements.modelPreference || '').trim();
   const sourceRows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
-  const matchedRows = sourceRows
-    .filter((row) => !requestedModel || row.model === requestedModel)
-    .filter((row) => meetsTrailerRequirements(row, requirements))
+  const modelRows = sourceRows
+    .filter((row) => !requestedModel || row.model === requestedModel);
+  const trailerWeight = Number(requirements.trailerWeight);
+  const tongueWeight = Number(requirements.tongueWeight);
+  const requiresFifthWheelPrep = requirements.hitchType === 'gooseneck';
+  const prepRows = requiresFifthWheelPrep
+    ? modelRows.filter((row) => row.fifthWheelGooseneckPrep === true)
+    : modelRows;
+  const towRows = prepRows.filter((row) => !Number.isFinite(trailerWeight) || trailerWeight <= 0 || row.maxTow >= trailerWeight);
+  const payloadRows = towRows.filter((row) => !Number.isFinite(tongueWeight) || tongueWeight <= 0 || row.maxPayload >= tongueWeight);
+  const matchedRows = payloadRows
     .map((row) => applyInventoryRequirements(row, requirements));
 
   return {
@@ -1195,6 +1203,12 @@ function filterVerifiedInventorySnapshot(snapshot, requirements = {}) {
     checkedCount: Number(snapshot?.checkedCount) || 0,
     verifiedCount: matchedRows.length,
     results: sortVerifiedInventoryRows(matchedRows),
+    eligibility: {
+      modelEligibleCount: modelRows.length,
+      factoryPrepConfirmedCount: requiresFifthWheelPrep ? prepRows.length : null,
+      towEligibleCount: towRows.length,
+      payloadEligibleCount: payloadRows.length,
+    },
   };
 }
 

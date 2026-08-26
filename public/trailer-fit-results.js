@@ -375,8 +375,9 @@ async function loadLowestPricedInventory() {
       result_count: rows.length,
     });
     if (!rows.length) {
+      const eligibility = payload.eligibility || {};
       inventoryStatusNode.textContent = target.hitchType === 'gooseneck'
-        ? `We checked ${payload.checkedCount || 0} verified Perkins listings and did not find a truck that clears this load with factory fifth-wheel / gooseneck prep confirmed on its window sticker.`
+        ? `We checked ${payload.checkedCount || 0} verified Perkins listings. ${eligibility.factoryPrepConfirmedCount || 0} have factory fifth-wheel / gooseneck prep confirmed on the window sticker; ${eligibility.towEligibleCount || 0} of those clear your trailer weight, and ${eligibility.payloadEligibleCount || 0} clear the full trailer and pin-weight target.`
         : `We checked ${payload.checkedCount || 0} verified Perkins listings and did not find a VIN-verified truck that clears this full trailer and payload target right now.`;
       return;
     }
