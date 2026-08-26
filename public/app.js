@@ -54,6 +54,18 @@ function trackAnalytics(eventName, parameters = {}) {
   }
 }
 
+function trackPerkinsInventoryClick(event) {
+  const link = event.target.closest('[data-perkins-inventory-click]');
+  if (!link) {
+    return;
+  }
+
+  trackAnalytics('perkins_inventory_click', {
+    inventory_context: link.dataset.perkinsInventoryClick || 'unknown',
+    ram_model: link.dataset.ramModel || 'unknown',
+  });
+}
+
 const VIN_OCR_WHITELIST = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789:- ';
 const VIN_CHECK_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
 const VIN_MODEL_YEAR_CODES = {
@@ -343,7 +355,7 @@ function renderInventoryLink(row, target = null) {
       <span class="inventory-label">Inventory connections powered by Perkins Motors</span>
       <p>${applied || 'Filtered to the closest available engine and drivetrain family on Perkins Motors.'}</p>
       ${target ? `<p class="inventory-target">${escapeHtml(formatTrailerTarget(target))}</p>` : ''}
-      <a class="button button-secondary inventory-button" href="${link}" target="_blank" rel="noreferrer" ${trailerTargetDataAttributes(target)}>Shop matching RAM ${escapeHtml(row.model || '')}s</a>
+      <a class="button button-secondary inventory-button" href="${link}" target="_blank" rel="noreferrer" data-perkins-inventory-click="trailer_recommendation" data-ram-model="${escapeHtml(row.model || '')}" ${trailerTargetDataAttributes(target)}>Shop matching RAM ${escapeHtml(row.model || '')}s</a>
       <p class="inventory-verify">Verify any candidate VIN in RAM Tow before purchase.</p>
     </div>
   `;
@@ -366,6 +378,8 @@ function renderVinPerkinsCta(response, spec) {
     ? `View current Perkins inventory filtered to this setup: ${description}.`
     : 'View the closest current Perkins inventory filters for this RAM setup.';
   vinPerkinsLink.href = link.url;
+  vinPerkinsLink.dataset.perkinsInventoryClick = 'vin_lookup_setup';
+  vinPerkinsLink.dataset.ramModel = spec?.model || '';
   vinPerkinsLink.textContent = isUsedInventory
     ? `Shop Used RAM ${spec?.model || ''}s`
     : 'Find This Setup at Perkins Motors';
@@ -424,6 +438,8 @@ async function refreshVinTradeCta(response) {
 
     vinTradeCopy.textContent = `Your current RAM falls short of ${formatTrailerTarget(target).replace('Target: ', '')}. See a RAM ${upgrade.model} setup at Perkins Motors that clears it.`;
     vinTradeLink.href = upgrade.inventoryLink.url;
+    vinTradeLink.dataset.perkinsInventoryClick = 'vin_lookup_upgrade';
+    vinTradeLink.dataset.ramModel = upgrade.model || '';
     vinTradeLink.setAttribute('data-trailer-weight', String(target.trailerWeight));
     vinTradeLink.setAttribute('data-tongue-weight', String(target.tongueWeight));
     vinTradeLink.setAttribute('data-hitch-type', target.hitchType);
@@ -435,6 +451,8 @@ async function refreshVinTradeCta(response) {
     }
   }
 }
+
+document.addEventListener('click', trackPerkinsInventoryClick);
 
 function renderRefinementOptions(select, values, selectedValue, placeholder, formatValue = (value) => value) {
   const selected = selectedValue == null ? '' : String(selectedValue);

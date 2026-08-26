@@ -15,6 +15,18 @@ function trackAnalytics(eventName, parameters = {}) {
   }
 }
 
+function trackPerkinsInventoryClick(event) {
+  const link = event.target.closest('[data-perkins-inventory-click]');
+  if (!link) {
+    return;
+  }
+
+  trackAnalytics('perkins_inventory_click', {
+    inventory_context: link.dataset.perkinsInventoryClick || 'unknown',
+    ram_model: link.dataset.ramModel || 'unknown',
+  });
+}
+
 const TRUCK_PROFILES = {
   '1500': {
     images: [
@@ -217,7 +229,7 @@ function inventoryMarkup(row, target) {
     return `<p class="fit-inventory-fallback">Call a Perkins RAM Expert at <a href="tel:+17192492040">719-249-2040</a> to find a matching RAM ${escapeHtml(row.model)}.</p>`;
   }
   return `
-    <a class="button button-secondary fit-shop-button" href="${escapeHtml(link)}" target="_blank" rel="noreferrer">Shop matching RAM ${escapeHtml(row.model)}s at Perkins Motors</a>
+    <a class="button button-secondary fit-shop-button" href="${escapeHtml(link)}" target="_blank" rel="noreferrer" data-perkins-inventory-click="trailer_recommendation" data-ram-model="${escapeHtml(row.model)}">Shop matching RAM ${escapeHtml(row.model)}s at Perkins Motors</a>
     <p class="fit-inventory-note">Your target is carried into this Perkins Motors link: ${escapeHtml(formatPounds(target.trailerWeight))} tow / ${escapeHtml(formatPounds(target.tongueWeight))} payload. Verify every candidate VIN in RAM Tow.</p>
     <p class="fit-delivery-note">Free Colorado delivery and remote purchase are available through Perkins Motors. Paid continental U.S. delivery is available through <a href="https://runbuggy.com/" target="_blank" rel="noreferrer">RunBuggy</a>.</p>
   `;
@@ -243,7 +255,7 @@ function renderRecommendation(row, target, index) {
 
   return `
     <article class="fit-card fit-card-${escapeHtml(row.recommendationTier || 'good')}">
-      <a class="fit-card-image-link" href="${escapeHtml(imageLink)}" target="_blank" rel="noreferrer" aria-label="Shop RAM ${escapeHtml(row.model)} trucks at Perkins Motors">
+      <a class="fit-card-image-link" href="${escapeHtml(imageLink)}" target="_blank" rel="noreferrer" data-perkins-inventory-click="trailer_recommendation_image" data-ram-model="${escapeHtml(row.model)}" aria-label="Shop RAM ${escapeHtml(row.model)} trucks at Perkins Motors">
       <div class="fit-card-image-wrap">
         <img class="fit-card-image" src="${image}" alt="${escapeHtml(profile.imageAlt)}" loading="lazy" referrerpolicy="no-referrer">
         <div class="fit-tier"><span>${escapeHtml(tier.label)}</span><strong>${escapeHtml(tierReserveCopy(row))}</strong></div>
@@ -325,7 +337,7 @@ function renderInventoryRow(row, target) {
         <div><dt>Payload capacity</dt><dd>${escapeHtml(formatPounds(row.maxPayload))}</dd></div>
       </dl>
       <p class="fit-inventory-room">${escapeHtml(formatPounds(row.towSurplus))} towing room · ${escapeHtml(formatPounds(row.payloadSurplus))} payload room above your target.</p>
-      <a class="button button-secondary fit-shop-button" href="${escapeHtml(inventory.inventoryUrl || '#')}" target="_blank" rel="noreferrer">View This Truck at Perkins Motors</a>
+      <a class="button button-secondary fit-shop-button" href="${escapeHtml(inventory.inventoryUrl || '#')}" target="_blank" rel="noreferrer" data-perkins-inventory-click="verified_inventory_listing" data-ram-model="${escapeHtml(row.model)}">View This Truck at Perkins Motors</a>
       <a class="fit-call-link" href="/?vin=${encodeURIComponent(inventory.inventoryVin || '')}#vin-form">Verify this VIN in RAM Tow</a>
     </article>
   `;
@@ -455,5 +467,7 @@ async function loadRecommendations() {
 inventoryButton?.addEventListener('click', () => {
   void loadLowestPricedInventory();
 });
+
+document.addEventListener('click', trackPerkinsInventoryClick);
 
 void loadRecommendations();
