@@ -3,6 +3,87 @@ import { onRequestGet as onLookupVinGet } from '../functions/api/lookup-vin/[vin
 import { onRequestPost as onMatchConfigPost } from '../functions/api/match-config.js';
 import { onRequestPost as onReverseLookupPost } from '../functions/api/reverse-lookup.js';
 import { onRequestPost as onPerkinsCapableInventoryPost } from '../functions/api/perkins-capable-inventory.js';
+import { json } from '../functions/_shared/http.js';
+import { PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS, PERKINS_INVENTORY_SNAPSHOT_NAME, schedulePerkinsInventoryRefresh } from '../functions/_shared/perkins-inventory-snapshot.js';
+import perkinsService from './lib/perkins-service.js';
+
+const { buildVerifiedInventorySnapshot } = perkinsService;
+const DAILY_REFRESH_MS = 24 * 60 * 60 * 1000;
+
+function snapshotIsStale(snapshot) {
+  const generatedAt = Date.parse(snapshot?.generatedAt || '');
+  return !Number.isFinite(generatedAt) || Date.now() - generatedAt >= PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS;
+}
+
+export class PerkinsInventorySnapshot {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    this.env = env;
+  }
+
+  async getStatus() {
+    return (await this.ctx.storage.get('status')) || null;
+  }
+
+  async scheduleRefreshIfNeeded() {
+    const snapshot = await this.ctx.storage.get('snapshot');
+    const status = await this.getStatus();
+    if (!snapshotIsStale(snapshot) || status?.state === 'refreshing') {
+      return { scheduled: false, status };
+    }
+
+    await this.ctx.storage.setAlarm(Date.now() + 250);
+    return { scheduled: true, status };
+  }
+
+  async fetch(request) {
+    const pathname = new URL(request.url).pathname;
+    if (pathname === '/snapshot') {
+      return json({
+        ok: true,
+        snapshot: (await this.ctx.storage.get('snapshot')) || null,
+        status: await this.getStatus(),
+      });
+    }
+
+    if (pathname === '/refresh-if-stale') {
+      const refresh = await this.scheduleRefreshIfNeeded();
+      return json({ ok: true, ...refresh });
+    }
+
+    return json({ ok: false, error: 'Not found.' }, { status: 404 });
+  }
+
+  async alarm() {
+    await this.ctx.storage.put('status', {
+      state: 'refreshing',
+      startedAt: new Date().toISOString(),
+      error: null,
+    });
+
+    try {
+      const snapshot = await buildVerifiedInventorySnapshot();
+      await this.ctx.storage.put('snapshot', snapshot);
+      await this.ctx.storage.put('status', {
+        state: 'ready',
+        completedAt: new Date().toISOString(),
+        generatedAt: snapshot.generatedAt,
+        checkedCount: snapshot.checkedCount,
+        verifiedCount: snapshot.verifiedCount,
+        error: null,
+      });
+      await this.ctx.storage.setAlarm(Date.now() + DAILY_REFRESH_MS);
+    } catch (error) {
+      await this.ctx.storage.put('status', {
+        state: 'failed',
+        completedAt: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error || 'Inventory refresh failed.'),
+      });
+      // Retry a failed ingestion without making shoppers trigger a new scrape.
+      await this.ctx.storage.setAlarm(Date.now() + 60 * 60 * 1000);
+    }
+  }
+}
 
 const STATIC_LANDING_PAGES = new Map([
   ['/ram-2500-towing-capacity', '/ram-2500-towing-capacity/index.html'],
@@ -124,5 +205,11 @@ export default {
     }
 
     return pageResponse(await env.ASSETS.fetch(request), pathname);
+  },
+
+  async scheduled(_controller, env) {
+    // The Durable Object decides whether the daily snapshot is stale. The
+    // four-hour cron is only a resilient wake-up and does not rescan daily data.
+    await schedulePerkinsInventoryRefresh(env);
   },
 };

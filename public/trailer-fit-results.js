@@ -362,6 +362,11 @@ async function loadLowestPricedInventory() {
       throw new Error(payload.error || 'Unable to check Perkins inventory right now.');
     }
 
+    if (payload.preparing) {
+      inventoryStatusNode.textContent = 'Today\'s VIN-verified Perkins inventory is being prepared. Please refresh this section in a few minutes.';
+      return;
+    }
+
     const rows = payload.results || [];
     trackAnalytics('perkins_verified_inventory_loaded', {
       hitch_type: target.hitchType,
@@ -382,7 +387,7 @@ async function loadLowestPricedInventory() {
   } finally {
     setInventoryLoading(false);
     inventoryButton.disabled = false;
-    inventoryButton.textContent = 'Refresh Verified Inventory';
+    inventoryButton.textContent = 'Refresh Today\'s Verified Inventory';
   }
 }
 

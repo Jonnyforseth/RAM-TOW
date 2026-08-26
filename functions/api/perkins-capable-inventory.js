@@ -1,7 +1,8 @@
 import perkinsService from '../../src/lib/perkins-service.js';
 import { json, errorResponse } from '../_shared/http.js';
+import { getPerkinsInventorySnapshot, schedulePerkinsInventoryRefresh } from '../_shared/perkins-inventory-snapshot.js';
 
-const { findLowestPricedVerifiedInventory } = perkinsService;
+const { filterVerifiedInventorySnapshot, findLowestPricedVerifiedInventory } = perkinsService;
 
 export async function onRequestPost(context) {
   try {
@@ -24,19 +25,44 @@ export async function onRequestPost(context) {
       throw new Error('Choose a valid hitch type.');
     }
 
-    const inventory = await findLowestPricedVerifiedInventory({
+    const requirements = {
       trailerWeight,
       tongueWeight,
       hitchType,
       modelPreference,
-    });
+    };
+    const snapshotState = await getPerkinsInventorySnapshot(context.env);
+    const refresh = snapshotState.configured
+      ? await schedulePerkinsInventoryRefresh(context.env)
+      : { scheduled: false };
+
+    if (snapshotState.configured && !snapshotState.snapshot) {
+      return json({
+        ok: true,
+        preparing: true,
+        requested: { trailerWeight, tongueWeight, hitchType, modelPreference: modelPreference || null },
+        checkedAt: null,
+        checkedCount: 0,
+        verifiedCount: 0,
+        results: [],
+        refreshScheduled: refresh.scheduled,
+        notes: ['The first daily Perkins inventory verification is being prepared. Check back in a few minutes.'],
+      }, { status: 202 });
+    }
+
+    const inventory = snapshotState.snapshot
+      ? filterVerifiedInventorySnapshot(snapshotState.snapshot, requirements)
+      : await findLowestPricedVerifiedInventory(requirements);
 
     return json({
       ok: true,
       requested: { trailerWeight, tongueWeight, hitchType, modelPreference: modelPreference || null },
       ...inventory,
+      refreshScheduled: refresh.scheduled,
       notes: [
-        'Each displayed truck was checked by its listed VIN against the RAM Tow chart matcher before it was included.',
+        snapshotState.snapshot
+          ? 'Each displayed truck was checked by its listed VIN against the RAM Tow chart matcher during the daily inventory verification.'
+          : 'Each displayed truck was checked by its listed VIN against the RAM Tow chart matcher before it was included.',
         'Listed price and availability can change. Verify the final VIN, payload door sticker, hitch equipment, and dealer information before purchase or towing.',
       ],
     });

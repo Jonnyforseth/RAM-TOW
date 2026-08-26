@@ -27,6 +27,7 @@ const DETAIL_CONCURRENCY = 6;
 const MAX_RESULTS = 12;
 const MAX_PER_TRIM = 2;
 const VERIFY_CONCURRENCY = 4;
+const INVENTORY_SNAPSHOT_VERSION = 1;
 
 const inventoryCache = new Map();
 const inventorySourceCache = new Map();
@@ -970,6 +971,8 @@ async function verifyInventoryCapabilities(inventoryMatch) {
 }
 
 function createVerifiedInventoryRow(item, verified, requirements) {
+  const trailerWeight = Number(requirements?.trailerWeight);
+  const tongueWeight = Number(requirements?.tongueWeight);
   const row = {
     model: verified.detectedSpec?.model || item.model || null,
     engine: verified.engine || item.engine || null,
@@ -983,8 +986,12 @@ function createVerifiedInventoryRow(item, verified, requirements) {
     payloadGVWR: verified.payloadGVWR || null,
     maxTow: verified.towCapacity,
     maxPayload: verified.payloadCapacity,
-    towSurplus: verified.towCapacity - requirements.trailerWeight,
-    payloadSurplus: verified.payloadCapacity - requirements.tongueWeight,
+    towSurplus: Number.isFinite(trailerWeight) && trailerWeight > 0
+      ? verified.towCapacity - trailerWeight
+      : null,
+    payloadSurplus: Number.isFinite(tongueWeight) && tongueWeight > 0
+      ? verified.payloadCapacity - tongueWeight
+      : null,
     confidence: 'high',
     verificationSource: 'vin',
     inventoryMatch: {
@@ -1002,6 +1009,21 @@ function createVerifiedInventoryRow(item, verified, requirements) {
   };
 
   return row;
+}
+
+function applyInventoryRequirements(row, requirements = {}) {
+  const trailerWeight = Number(requirements.trailerWeight);
+  const tongueWeight = Number(requirements.tongueWeight);
+
+  return {
+    ...row,
+    towSurplus: Number.isFinite(trailerWeight) && trailerWeight > 0
+      ? row.maxTow - trailerWeight
+      : null,
+    payloadSurplus: Number.isFinite(tongueWeight) && tongueWeight > 0
+      ? row.maxPayload - tongueWeight
+      : null,
+  };
 }
 
 function sortAndLimitResults(results) {
@@ -1122,33 +1144,49 @@ async function attachInventoryMatches(results, requirements = {}) {
 }
 
 async function findLowestPricedVerifiedInventory(requirements = {}) {
-  const requestedModel = String(requirements.modelPreference || '').trim();
-  const models = ['1500', '2500', '3500'].filter((model) => !requestedModel || model === requestedModel);
+  const snapshot = await buildVerifiedInventorySnapshot();
+  return filterVerifiedInventorySnapshot(snapshot, requirements);
+}
+
+async function buildVerifiedInventorySnapshot() {
+  const models = ['1500', '2500', '3500'];
   const inventoryEntries = await Promise.all(
     models.map(async (model) => [model, await loadModelInventory(model)])
   );
   const allInventory = Object.fromEntries(inventoryEntries);
-
-  // The listings are only pre-screened by model and VIN presence. The final keep/reject
-  // decision comes from the same sticker-and-chart lookup used by VIN Lookup.
-  const candidates = models.flatMap((model) =>
-    (allInventory[model] || []).filter((item) => item.inventoryVin)
+  const candidates = dedupeInventoryByVin(
+    models.flatMap((model) => (allInventory[model] || []).filter((item) => item.inventoryVin))
   );
 
   const verified = await mapWithConcurrency(candidates, VERIFY_CONCURRENCY, async (item) => {
     const capabilities = await verifyInventoryCapabilities({ inventoryVin: item.inventoryVin });
-    if (!capabilities) {
-      return null;
-    }
-    const verifiedRow = createVerifiedInventoryRow(item, capabilities, requirements);
-    return meetsTrailerRequirements(verifiedRow, requirements) ? verifiedRow : null;
+    return capabilities ? createVerifiedInventoryRow(item, capabilities, {}) : null;
   });
 
-  const matchedRows = verified.filter(Boolean);
+  const rows = verified.filter(Boolean);
   return {
+    version: INVENTORY_SNAPSHOT_VERSION,
     source: 'https://perkinsmotors.com',
-    checkedAt: new Date().toISOString(),
+    generatedAt: new Date().toISOString(),
     checkedCount: candidates.length,
+    verifiedCount: rows.length,
+    rows,
+  };
+}
+
+function filterVerifiedInventorySnapshot(snapshot, requirements = {}) {
+  const requestedModel = String(requirements.modelPreference || '').trim();
+  const sourceRows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+  const matchedRows = sourceRows
+    .filter((row) => !requestedModel || row.model === requestedModel)
+    .filter((row) => meetsTrailerRequirements(row, requirements))
+    .map((row) => applyInventoryRequirements(row, requirements));
+
+  return {
+    source: snapshot?.source || 'https://perkinsmotors.com',
+    checkedAt: snapshot?.generatedAt || null,
+    snapshotGeneratedAt: snapshot?.generatedAt || null,
+    checkedCount: Number(snapshot?.checkedCount) || 0,
     verifiedCount: matchedRows.length,
     results: sortVerifiedInventoryRows(matchedRows),
   };
@@ -1159,10 +1197,12 @@ module.exports = {
   attachInventoryMatches,
   attachInventorySearchLinks,
   buildFilteredInventoryUrl,
+  buildVerifiedInventorySnapshot,
   buildCandidateProfile,
   dedupeInventoryByVin,
   extractMileage,
   findLowestPricedVerifiedInventory,
+  filterVerifiedInventorySnapshot,
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,

@@ -8,6 +8,7 @@ const {
   dedupeInventoryByVin,
   extractMileage,
   findBestInventoryMatch,
+  filterVerifiedInventorySnapshot,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   meetsTrailerRequirements,
@@ -19,6 +20,40 @@ test('extractMileage prefers vehicle structured data and supports Perkins mileag
   assert.equal(extractMileage('', { mileageFromOdometer: { value: 1858 } }), 1858);
   assert.equal(extractMileage('<dl><dt>42,605</dt><dd>Miles</dd></dl>', null), 42605);
   assert.equal(extractMileage('', null), null);
+});
+
+test('daily verified inventory snapshots filter by trailer requirements without rescanning VINs', () => {
+  const snapshot = {
+    source: 'https://perkinsmotors.com',
+    generatedAt: '2026-08-26T12:00:00.000Z',
+    checkedCount: 42,
+    rows: [
+      {
+        model: '1500',
+        maxTow: 9590,
+        maxPayload: 1630,
+        inventoryMatch: { stockNumber: 'LOW', currentPrice: 36000 },
+      },
+      {
+        model: '2500',
+        maxTow: 15000,
+        maxPayload: 2800,
+        inventoryMatch: { stockNumber: 'HD', currentPrice: 52000 },
+      },
+    ],
+  };
+
+  const result = filterVerifiedInventorySnapshot(snapshot, {
+    trailerWeight: 10000,
+    tongueWeight: 1000,
+    modelPreference: '',
+  });
+
+  assert.equal(result.checkedCount, 42);
+  assert.equal(result.verifiedCount, 1);
+  assert.equal(result.results[0].inventoryMatch.stockNumber, 'HD');
+  assert.equal(result.results[0].towSurplus, 5000);
+  assert.equal(result.results[0].payloadSurplus, 1800);
 });
 
 test('VIN lookups for 2025 and older route to the matching used RAM model inventory', async () => {

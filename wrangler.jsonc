@@ -9,6 +9,23 @@
     "directory": "public",
     "binding": "ASSETS"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PERKINS_INVENTORY_SNAPSHOT",
+        "class_name": "PerkinsInventorySnapshot"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-perkins-inventory-snapshot",
+      "new_sqlite_classes": ["PerkinsInventorySnapshot"]
+    }
+  ],
+  "triggers": {
+    "crons": ["20 */4 * * *"]
+  },
   "vars": {
     "GA_MEASUREMENT_ID": "G-FXRKJ81DXP"
   }
