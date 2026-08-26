@@ -4,6 +4,7 @@ const {
   LIGHT_DUTY_PAYLOAD_ROWS_2024,
   LIGHT_DUTY_TOW_ROWS_2024,
 } = require('./chart-year-2024');
+const { buildClassicRows } = require('./chart-year-classic-2023-2024');
 const {
   HD_PAYLOAD_ROWS_2023,
   HD_TOW_ROWS_2023,
@@ -38,6 +39,8 @@ const {
 const DEFAULT_CHART_YEAR = 2026;
 // Add a model year here, its two source PDFs, and its row data to extend support.
 const SUPPORTED_CHART_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const CLASSIC_ROWS_2023 = buildClassicRows(2023);
+const CLASSIC_ROWS_2024 = buildClassicRows(2024);
 
 const PDF_PATHS_BY_YEAR = {
   2019: {
@@ -134,6 +137,8 @@ const LIGHT_DUTY_PAYLOAD_ROWS_2025 = [
   { model: '1500', engine: '3.6L Pentastar V6 eTorque', cab: 'Quad', bed: `6'4"`, drive: '4x4', gvwr: 6800, maxPayload: 1810 },
   { model: '1500', engine: '3.6L Pentastar V6 eTorque', cab: 'Quad', bed: `6'4"`, drive: '4x2', gvwr: 6900, maxPayload: 2010 },
   { model: '1500', engine: '3.6L Pentastar V6 eTorque', cab: 'Quad', bed: `6'4"`, drive: '4x2', gvwr: 7200, maxPayload: 2370 },
+  { model: '1500', engine: '3.6L Pentastar V6 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x2', gvwr: 6900, maxPayload: 2010 },
+  { model: '1500', engine: '3.6L Pentastar V6 eTorque', cab: 'Crew', bed: `5'7"`, drive: '4x4', gvwr: 6900, maxPayload: 1780 },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Quad', bed: `6'4"`, drive: '4x2', gvwr: 6875, maxPayload: 1820, trimHint: 'HFE' },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Quad', bed: `6'4"`, drive: '4x2', gvwr: 6900, maxPayload: 1870 },
   { model: '1500', engine: '3.0L Hurricane SO', cab: 'Quad', bed: `6'4"`, drive: '4x4', gvwr: 7100, maxPayload: 1980 },
@@ -198,13 +203,16 @@ const HD_TOW_ROWS_2025 = [
   { model: '3500', engine: '6.4L HEMI V8', rearWheels: 'DRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '4.10', gvwr: 14000, gcwr: 25000, maxTow: 17200 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 24290, maxTow: 14630 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 24290, maxTow: 15380 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 10190, gcwr: 24290, maxTow: 15680 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Mega', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 24290, maxTow: 15710 },
-  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 26580, maxTow: 17080 },
-  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 26580, maxTow: 18230 },
-  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 10190, gcwr: 26580, maxTow: 18230 },
-  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 26580, maxTow: 18230 },
-  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 28110, maxTow: 18820 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 26580, maxTow: 17080 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 26580, maxTow: 18230 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 10190, gcwr: 26580, maxTow: 18230 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 26580, maxTow: 18230 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 28110, maxTow: 18820 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 9900, gcwr: 27820, maxTow: 19900 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 10000, gcwr: 27820, maxTow: 19900 },
+  { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 10190, gcwr: 27820, maxTow: 19900 },
   { model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Regular', bed: `8'`, drive: '4x4', axleRatio: '3.42', gvwr: 11040, gcwr: 27820, maxTow: 19930 },
   { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x2', axleRatio: '3.42', gvwr: 11500, gcwr: 31850, maxTow: 23950 },
   { model: '3500', engine: '6.7L Cummins HO', rearWheels: 'SRW', cab: 'Crew', bed: `6'4"`, drive: '4x4', axleRatio: '3.42', gvwr: 11800, gcwr: 31820, maxTow: 23550 },
@@ -480,13 +488,13 @@ const CHART_DATA_BY_YEAR = {
   },
   2023: {
     pdfPaths: PDF_PATHS_BY_YEAR[2023],
-    towRows: [...LIGHT_DUTY_TOW_ROWS_2023, ...HD_TOW_ROWS_2023],
-    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2023, ...HD_PAYLOAD_ROWS_2023],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2023, ...CLASSIC_ROWS_2023.towRows, ...HD_TOW_ROWS_2023],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2023, ...CLASSIC_ROWS_2023.payloadRows, ...HD_PAYLOAD_ROWS_2023],
   },
   2024: {
     pdfPaths: PDF_PATHS_BY_YEAR[2024],
-    towRows: [...LIGHT_DUTY_TOW_ROWS_2024, ...HD_TOW_ROWS_2024],
-    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2024, ...HD_PAYLOAD_ROWS_2024],
+    towRows: [...LIGHT_DUTY_TOW_ROWS_2024, ...CLASSIC_ROWS_2024.towRows, ...HD_TOW_ROWS_2024],
+    payloadRows: [...LIGHT_DUTY_PAYLOAD_ROWS_2024, ...CLASSIC_ROWS_2024.payloadRows, ...HD_PAYLOAD_ROWS_2024],
   },
   2025: {
     pdfPaths: PDF_PATHS_BY_YEAR[2025],

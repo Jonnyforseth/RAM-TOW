@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches, getOverrideOptions } = require('../src/lib/chart-service');
 const { detectGVWR, detectModelYearFromVin, detectVehicleMarket, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
+const { getPayloadRows, getTowRows, SUPPORTED_CHART_YEARS } = require('../src/data/chart-data');
 
 test('detectModelYearFromVin reads 2019 through 2026 model years from the VIN', () => {
   assert.equal(detectModelYearFromVin('1C6RR7KT1KS000000'), 2019);
@@ -66,8 +67,212 @@ test('2023 Canadian Limited Longhorn uses a clearly marked mechanical-chart fall
   assert.ok(canadianMatches.towMatches.length > 0);
   assert.ok(canadianMatches.towMatches.every((row) => row.canadianTrimFallback));
   assert.deepEqual([towSummary.min, towSummary.max], [19170, 19980]);
-  assert.match(towSummary.note, /Canadian-market trim naming/);
-  assert.equal(usMatches.towMatches.length, 0);
+  assert.match(towSummary.note, /Canadian-market trim name is not published/);
+  assert.ok(usMatches.towMatches.length > 0);
+  assert.ok(usMatches.towMatches.every((row) => row.trimFallback && !row.canadianTrimFallback));
+});
+
+test('2023 U.S. Limited eTorque uses a transparent source-chart trim fallback', () => {
+  const detected = extractDetectedSpec('1C6SRFHT6PN612403', `
+    A 2023 MODEL YEAR RAM 1500 LIMITED CREW CAB 4X4 THIS VEHICLE
+    Engine: 5.7L V8 HEMI MDS VVT eTorque Engine w/ Stop/Start
+    3.21 Axle Ratio
+  `, {
+    ModelYear: '2023',
+    DriveType: '4WD/4-Wheel Drive/4x4',
+    BodyCabType: 'Crew/Super Crew/Crew Max',
+    BedType: 'Short',
+    DisplacementL: '5.7',
+    EngineCylinders: '8',
+    FuelTypePrimary: 'Gasoline',
+  });
+  const matches = findMatches(detected, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(detected, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(detected, matches, 'payload');
+
+  assert.equal(detected.engineVariant, 'eTorque');
+  assert.equal(detected.displayEngine, '5.7L HEMI V8 eTorque');
+  assert.ok(matches.towMatches.every((row) => row.trimFallback));
+  assert.deepEqual([towSummary.min, towSummary.max], [8100, 8270]);
+  assert.deepEqual([payloadSummary.min, payloadSummary.max], [1760, 1800]);
+  assert.deepEqual(getOverrideOptions(detected, matches).gvwr, ['6900', '7100']);
+  assert.match(towSummary.note, /limited trim is not published/i);
+
+  const at6900 = cleanSpec({ ...detected, gvwr: 6900 });
+  const at7100 = cleanSpec({ ...detected, gvwr: 7100 });
+  assert.equal(at6900.bed, `5'7"`);
+  assert.equal(at7100.axleRatio, '3.21');
+  assert.equal(buildVinCapacitySummary(at6900, findMatches(at6900, { year: 2023 }), 'tow').min, 8270);
+  assert.equal(buildVinCapacitySummary(at6900, findMatches(at6900, { year: 2023 }), 'payload').min, 1760);
+  assert.equal(buildVinCapacitySummary(at7100, findMatches(at7100, { year: 2023 }), 'tow').min, 8100);
+  assert.equal(buildVinCapacitySummary(at7100, findMatches(at7100, { year: 2023 }), 'payload').min, 1800);
+});
+
+test('standard and unknown 5.7L HEMI stickers are not displayed as eTorque', () => {
+  const standard = extractDetectedSpec('1C6SRFJT6PN000001', `
+    A 2023 MODEL YEAR RAM 1500 LARAMIE CREW CAB 4X4 THIS VEHICLE
+    Engine: 5.7L V8 HEMI MDS VVT Engine
+  `, {
+    ModelYear: '2023', DisplacementL: '5.7', EngineCylinders: '8', FuelTypePrimary: 'Gasoline',
+  });
+  const unavailable = extractDetectedSpec('1C6SRFJT6PN000002', 'We are unable to retrieve a window sticker for this VIN at this time.', {
+    ModelYear: '2023', DisplacementL: '5.7', EngineCylinders: '8', FuelTypePrimary: 'Gasoline',
+  });
+
+  assert.equal(standard.engineVariant, 'Standard');
+  assert.equal(standard.displayEngine, '5.7L HEMI V8');
+  assert.equal(unavailable.engineVariant, null);
+  assert.equal(unavailable.displayEngine, '5.7L HEMI V8');
+});
+
+test('dedicated performance and off-road trims do not fall back to ordinary chart rows', () => {
+  const spec = cleanSpec({
+    year: 2023,
+    model: '1500',
+    trim: 'TRX',
+    engine: '5.7L HEMI V8 eTorque',
+    engineVariant: 'eTorque',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `5'7"`,
+  });
+
+  assert.equal(findMatches(spec, { year: 2023 }).towMatches.length, 0);
+});
+
+test('2023 and 2024 RAM 1500 Classic use their DS chart families', () => {
+  const classic2023 = cleanSpec({
+    year: 2023, model: '1500 Classic', trim: 'Tradesman', engine: '3.6L Pentastar V6', transmission: '8-Speed', drive: '4x4', cab: 'Crew', bed: `5'7"`,
+  });
+  const classic2024 = cleanSpec({
+    year: 2024, model: '1500 Classic', trim: 'Tradesman', engine: '5.7L HEMI V8', transmission: '8-Speed', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.21', gvwr: 6900,
+  });
+
+  assert.equal(buildVinCapacitySummary(classic2023, findMatches(classic2023, { year: 2023 }), 'tow').min, 4350);
+  assert.equal(buildVinCapacitySummary(classic2024, findMatches(classic2024, { year: 2024 }), 'tow').min, 7990);
+  assert.equal(buildVinCapacitySummary(classic2024, findMatches(classic2024, { year: 2024 }), 'payload').min, 1560);
+});
+
+test('2023 RAM 1500 Rebel can use the ordinary published mechanical row', () => {
+  const rebel = cleanSpec({
+    year: 2023, model: '1500', trim: 'Rebel', engine: '5.7L HEMI V8 eTorque', engineVariant: 'eTorque', drive: '4x4', cab: 'Crew', bed: `5'7"`, axleRatio: '3.92', ramBox: true,
+  });
+
+  const summary = buildVinCapacitySummary(rebel, findMatches(rebel, { year: 2023 }), 'tow');
+  assert.equal(summary.min, 11200);
+  assert.equal(summary.note.includes('Rebel trim'), true);
+});
+
+test('2023 2500 Cummins Longhorn RamBox receives a transparent chart range instead of no match', () => {
+  const longhorn = cleanSpec({
+    year: 2023,
+    model: '2500',
+    trim: 'Longhorn',
+    engine: '6.7L Cummins HO',
+    engineVariant: 'Standard',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `6'4"`,
+    rearWheels: 'SRW',
+    ramBox: true,
+    axleRatio: '3.73',
+  });
+
+  const matches = findMatches(longhorn, { year: 2023 });
+  const towSummary = buildVinCapacitySummary(longhorn, matches, 'tow');
+  const payloadSummary = buildVinCapacitySummary(longhorn, matches, 'payload');
+
+  assert.ok(matches.towMatches.length > 0);
+  assert.ok(matches.payloadMatches.length > 0);
+  assert.equal(towSummary.isRange, true);
+  assert.equal(towSummary.min, 19170);
+  assert.equal(towSummary.max, 19980);
+  assert.equal(payloadSummary.min, 2390);
+  assert.equal(payloadSummary.max, 2480);
+  assert.match(towSummary.note, /does not publish a separate RamBox row/i);
+});
+
+test('HD RamBox infers the Crew Cab short box when the sticker omits its length', () => {
+  const spec = extractDetectedSpec('3C6UR5GLXPG501513', [
+    '2023 MODEL YEAR',
+    'RAM 2500 LIMITED LONGHORN CREW CAB 4X4',
+    'Engine: 6.7L I6 Cummins Turbo Diesel Engine',
+    '3.73 Axle Ratio',
+    'RamBox Cargo Management System',
+  ].join('\n'), {});
+
+  assert.equal(spec.bed, `6'4"`);
+  assert.equal(spec.ramBox, true);
+});
+
+test('a malformed decoded GVWR class cannot erase every otherwise matching chart row', () => {
+  const spec = {
+    ...cleanSpec({
+      year: 2020,
+      model: '2500',
+      trim: 'Tradesman',
+      engine: '6.4L HEMI V8',
+      drive: '4x4',
+      cab: 'Crew',
+      axleRatio: '4.10',
+    }),
+    gvwrClassMin: 3629,
+    gvwrClassMax: 9000,
+  };
+
+  const towSummary = buildVinCapacitySummary(spec, findMatches(spec, { year: 2020 }), 'tow');
+  const payloadSummary = buildVinCapacitySummary(spec, findMatches(spec, { year: 2020 }), 'payload');
+
+  assert.ok(towSummary.min != null);
+  assert.ok(payloadSummary.min != null);
+  assert.equal(towSummary.selectionMismatch, false);
+});
+
+test('2025 V6 Crew Cab and Cummins Crew Cab long-box rows use the published chart columns', () => {
+  const v6Crew = cleanSpec({
+    year: 2025, model: '1500', engine: '3.6L Pentastar V6 eTorque', drive: '4x4', cab: 'Crew', bed: `5'7"`, gvwr: 6900,
+  });
+  const dieselLongBox = cleanSpec({
+    year: 2025, model: '2500', engine: '6.7L Cummins HO', rearWheels: 'SRW', drive: '4x4', cab: 'Crew', bed: `8'`, axleRatio: '3.42',
+  });
+
+  assert.equal(buildVinCapacitySummary(v6Crew, findMatches(v6Crew, { year: 2025 }), 'payload').min, 1780);
+  const dieselTow = buildVinCapacitySummary(dieselLongBox, findMatches(dieselLongBox, { year: 2025 }), 'tow');
+  assert.equal(dieselTow.min, 17080);
+  assert.equal(dieselTow.max, 18230);
+});
+
+test('2019 through 2025 normal configurations remain matchable when a high retail trim is not charted separately', () => {
+  const excludedTrims = new Set(['trx', 'power wagon', 'rebel', 'hfe', 'ssv', 'rho', 'max tow']);
+  const isExcluded = (row) => [row.trim, row.trimHint, row.trimStrict]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split('/'))
+    .map((value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())
+    .some((value) => excludedTrims.has(value));
+
+  for (const year of SUPPORTED_CHART_YEARS.filter((value) => value >= 2019 && value <= 2025)) {
+    for (const [kind, rows] of [['tow', getTowRows(year)], ['payload', getPayloadRows(year)]]) {
+      for (const row of rows.filter((value) => !isExcluded(value))) {
+        const spec = cleanSpec({ ...row, year, trim: 'Limited' });
+        const matches = kind === 'tow'
+          ? findMatches(spec, { year }).towMatches
+          : findMatches(spec, { year }).payloadMatches;
+        const capacityKey = kind === 'tow' ? 'maxTow' : 'maxPayload';
+
+        assert.ok(matches.some((match) => (
+          match.model === row.model
+          && match.engine === row.engine
+          && match.engineVariant === row.engineVariant
+          && match.drive === row.drive
+          && match.cab === row.cab
+          && match.bed === row.bed
+          && match.axleRatio === row.axleRatio
+          && match.gvwr === row.gvwr
+          && match[capacityKey] === row[capacityKey]
+        )), `${year} ${kind} ${row.model} ${row.engine} should retain its mechanical chart row`);
+      }
+    }
+  }
 });
 
 test('2019 RAM 1500 Classic keeps six-speed and eight-speed HEMI rows distinct', () => {

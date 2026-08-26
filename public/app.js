@@ -226,7 +226,7 @@ function renderDetectedSpec(spec) {
   const pairs = [
     ['Model', spec.model],
     ['Trim', spec.trim],
-    ['Engine', spec.engine],
+    ['Engine', spec.displayEngine || spec.engine],
     ['Drive', spec.drive],
     ['Cab', spec.cab],
     ['Bed', spec.bed],
@@ -537,12 +537,25 @@ async function refineVinCapacity() {
   }
 
   const requestId = ++vinRefinementRequest;
+  const isVisibleRefinement = (field) => field && !field.classList.contains('hidden');
+  const selectedBed = isVisibleRefinement(vinBedField) && vinBedSelect?.value
+    ? vinBedSelect.value
+    : vinBaseSpec.bed;
+  const selectedRamBox = isVisibleRefinement(vinRamBoxField) && vinRamBoxSelect?.value !== ''
+    ? vinRamBoxSelect.value === 'true'
+    : vinBaseSpec.ramBox;
+  const selectedAxleRatio = isVisibleRefinement(vinAxleField) && vinAxleSelect?.value
+    ? vinAxleSelect.value
+    : vinBaseSpec.axleRatio;
+  const selectedGvwr = isVisibleRefinement(vinGvwrField) && vinGvwrSelect?.value
+    ? Number(vinGvwrSelect.value)
+    : vinBaseSpec.gvwr;
   const spec = {
     ...vinBaseSpec,
-    bed: vinBedSelect?.value || null,
-    ramBox: vinRamBoxSelect?.value === '' ? null : vinRamBoxSelect?.value === 'true',
-    axleRatio: vinAxleSelect?.value || null,
-    gvwr: vinGvwrSelect?.value ? Number(vinGvwrSelect.value) : null,
+    bed: selectedBed,
+    ramBox: selectedRamBox,
+    axleRatio: selectedAxleRatio,
+    gvwr: selectedGvwr,
   };
 
   showStatus(vinStatus, 'Refining the RAM chart match...');

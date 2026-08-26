@@ -18,7 +18,9 @@ const chartCache = {
 };
 
 const CRITICAL_MISMATCH_KEYS = new Set(['model', 'engine', 'engineVariant', 'transmission', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trim', 'trimStrict']);
-const CANADIAN_SPECIAL_TRIMS = new Set(['trx', 'power wagon', 'rebel']);
+// These trims have dedicated mechanical configurations. Never use a generic
+// retail-trim fallback for them, even when a source chart does not name them.
+const TRIM_FALLBACK_EXCLUDED = new Set(['trx', 'power wagon', 'rebel', 'hfe', 'ssv', 'rho', 'max tow']);
 
 function normalize(value) {
   return String(value || '')
@@ -347,38 +349,117 @@ function rankedMatches(rows, spec, isPayload, options = {}) {
     .filter(({ scoreInfo }) => scoreInfo.mismatches.length <= 2 && !hasDisallowedMismatch(scoreInfo))
     .sort(compareRankedMatches)
     .map(({ row, scoreInfo }) => decorateMatch(
-      options.canadianTrimFallback
-        ? { ...row, confidence: 'medium', canadianTrimFallback: true }
+      options.trimFallback
+        ? {
+          ...row,
+          confidence: 'medium',
+          trimFallback: true,
+          canadianTrimFallback: Boolean(options.canadianTrimFallback),
+        }
         : row,
       scoreInfo,
       options.type,
     ));
 }
 
-function canUseCanadianTrimFallback(spec) {
-  return spec.market === 'CA'
-    && Boolean(spec.trim)
-    && !CANADIAN_SPECIAL_TRIMS.has(normalize(spec.trim));
+function isTrimFallbackExcluded(value) {
+  return String(value || '')
+    .split('/')
+    .map((trim) => normalize(trim))
+    .filter(Boolean)
+    .some((trim) => TRIM_FALLBACK_EXCLUDED.has(trim));
 }
 
-function isCanadianSpecialTrimRow(row) {
+function hasDedicatedSpecialTrimRow(rows, spec) {
+  return rows.some((row) => {
+    if (!isTrimFallbackExcludedRow(row) || !rowTrimMatches(row, spec.trim)) {
+      return false;
+    }
+
+    return ['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox']
+      .every((key) => !spec[key] || !row[key] || row[key] === spec[key]);
+  });
+}
+
+function canUseTrimFallback(rows, spec) {
+  if (!spec.trim) {
+    return false;
+  }
+
+  // These names always denote a dedicated package or powertrain. Rebel is the
+  // one exception because some 1500 chart years did not publish it separately.
+  if (isTrimFallbackExcluded(spec.trim) && normalize(spec.trim) !== 'rebel') {
+    return false;
+  }
+
+  // A name such as Rebel is only special when this model-year chart actually
+  // contains a dedicated mechanical row for it. The 2023 1500 chart does not,
+  // so its Rebel must be allowed to use the ordinary matching powertrain row.
+  return !isTrimFallbackExcluded(spec.trim) || !hasDedicatedSpecialTrimRow(rows, spec);
+}
+
+function isTrimFallbackExcludedRow(row) {
   return [row.trim, row.trimHint, row.trimStrict]
     .filter(Boolean)
-    .some((trim) => CANADIAN_SPECIAL_TRIMS.has(normalize(trim)));
+    .some((trim) => isTrimFallbackExcluded(trim));
 }
 
-function canadianTrimFallback(rows, spec, isPayload, type) {
-  if (!canUseCanadianTrimFallback(spec)) {
+function trimFallback(rows, spec, isPayload, type) {
+  if (!canUseTrimFallback(rows, spec)) {
     return [];
   }
 
-  // Canadian retail trim names do not always appear in the U.S.-formatted
-  // source chart. Keep all mechanical identifiers strict and only relax the
-  // trim-name gate after an exact chart-name match is unavailable.
-  return rankedMatches(rows.filter((row) => !isCanadianSpecialTrimRow(row)), { ...spec, trim: null }, isPayload, {
+  // Some source charts publish only representative retail trims. Keep every
+  // mechanical identifier strict and relax only the trim-name gate after an
+  // exact published trim match is unavailable.
+  return rankedMatches(rows.filter((row) => !isTrimFallbackExcludedRow(row)), { ...spec, trim: null }, isPayload, {
     type,
-    canadianTrimFallback: true,
+    trimFallback: true,
+    canadianTrimFallback: spec.market === 'CA',
   });
+}
+
+function canUse2023HdRamBoxFallback(rows, chartYear, spec) {
+  // Ram's 2023 2500 4x4 source chart omits a separate Crew Cab RamBox row
+  // for the non-special Cummins retail trims, even though those trucks exist.
+  // Keep this exception deliberately narrow so RamBox remains a strict match
+  // everywhere the source chart actually publishes one.
+  return Number(chartYear) === 2023
+    && spec.model === '2500'
+    && spec.engine === '6.7L Cummins HO'
+    && spec.engineVariant === 'Standard'
+    && spec.drive === '4x4'
+    && spec.cab === 'Crew'
+    && spec.bed === `6'4"`
+    && spec.rearWheels === 'SRW'
+    && spec.ramBox === true
+    && canUseTrimFallback(rows, spec);
+}
+
+function hdRamBoxFallback(rows, spec, isPayload, type, chartYear) {
+  if (!canUse2023HdRamBoxFallback(rows, chartYear, spec)) {
+    return [];
+  }
+
+  // Use only the otherwise identical published non-RamBox mechanical family.
+  // The UI labels this as a range and asks for final confirmation because the
+  // source table does not state a RamBox-specific capacity for this case.
+  return rankedMatches(rows.filter((row) => {
+    return !isTrimFallbackExcludedRow(row)
+      && row.model === spec.model
+      && row.engine === spec.engine
+      && row.engineVariant === spec.engineVariant
+      && row.drive === spec.drive
+      && row.cab === spec.cab
+      && row.bed === spec.bed
+      && row.rearWheels === spec.rearWheels
+      && row.ramBox === false;
+  }), { ...spec, trim: null, ramBox: null }, isPayload, { type, trimFallback: true })
+    .map((row) => ({
+      ...row,
+      confidence: 'medium',
+      ramBoxFallback: true,
+    }));
 }
 
 function hasDisallowedMismatch(scoreInfo) {
@@ -386,7 +467,11 @@ function hasDisallowedMismatch(scoreInfo) {
 }
 
 function sameMatchFamily(left, right) {
-  return ['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox', 'trimStrict']
+  const keys = ['model', 'engine', 'engineVariant', 'drive', 'cab', 'bed', 'rearWheels', 'ramBox'];
+  if (!left?.trimFallback && !right?.trimFallback) {
+    keys.push('trimStrict');
+  }
+  return keys
     .every((key) => (left?.[key] || null) === (right?.[key] || null));
 }
 
@@ -413,7 +498,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
 
   let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
   const trimCompatibleRows = candidateRows.filter((row) => {
-    return row.canadianTrimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
+    return row.trimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
   });
   if (trimCompatibleRows.length) {
     candidateRows = trimCompatibleRows;
@@ -433,7 +518,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
     const gvwrMin = toNumber(spec.gvwrClassMin);
     const gvwrMax = toNumber(spec.gvwrClassMax);
     if (gvwrMin || gvwrMax) {
-      candidateRows = candidateRows.filter((row) => {
+      const boundedRows = candidateRows.filter((row) => {
         if (!row.gvwr) {
           return true;
         }
@@ -445,6 +530,12 @@ function buildVinCapacitySummary(spec, matches, kind) {
         }
         return true;
       });
+      // NHTSA occasionally supplies a broad or malformed GVWR class rather
+      // than the truck's actual rating. It may narrow a valid chart family,
+      // but it must never erase every otherwise matching source-chart row.
+      if (boundedRows.length) {
+        candidateRows = boundedRows;
+      }
     }
   }
 
@@ -475,8 +566,12 @@ function buildVinCapacitySummary(spec, matches, kind) {
     max: values.at(-1) ?? primary[capacityKey] ?? null,
     candidateCount: candidateRows.length,
     reasonText: null,
-    note: primary.canadianTrimFallback
-      ? 'Canadian-market trim name is not published as a separate source-chart row. This result is matched by the truck\'s engine, cab, bed, drivetrain, axle, and GVWR; confirm with a RAM dealer before towing.'
+    note: primary.ramBoxFallback
+      ? 'RAM\'s 2023 chart does not publish a separate RamBox row for this Cummins Crew Cab configuration. This range uses the otherwise matching published drivetrain, cab, box, axle, and GVWR rows; confirm the final rating on the door sticker or with a RAM dealer.'
+      : primary.trimFallback
+      ? primary.canadianTrimFallback
+        ? 'Canadian-market trim name is not published as a separate source-chart row. This result is matched by the truck\'s engine, cab, bed, drivetrain, axle, and GVWR; confirm with a RAM dealer before towing.'
+        : `The ${spec.trim} trim is not published as a separate source-chart row. This result is matched by the truck's engine, cab, bed, drivetrain, axle, and GVWR; confirm with a RAM dealer before towing.`
       : null,
   };
 
@@ -485,8 +580,10 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   const reasons = [];
-  if (primary.canadianTrimFallback) {
-    reasons.push('Canadian-market trim naming');
+  if (primary.ramBoxFallback) {
+    reasons.push('the RamBox-specific source-chart row');
+  } else if (primary.trimFallback) {
+    reasons.push(primary.canadianTrimFallback ? 'Canadian-market trim naming' : 'published trim configuration');
   }
   if (!spec.axleRatio && axleValues.length > 1) {
     reasons.push('axle ratio');
@@ -496,7 +593,18 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   summary.reasonText = listToSentence(reasons) || 'sticker details';
-  summary.note = `Range shown because the window sticker does not clearly confirm ${summary.reasonText}. Confirm on the door sticker or with your dealer.`;
+  if (primary.ramBoxFallback) {
+    const remainingReasons = reasons.filter((reason) => reason !== 'the RamBox-specific source-chart row');
+    summary.note = `Range shown because RAM\'s 2023 chart does not publish a separate RamBox row for this Cummins Crew Cab configuration${remainingReasons.length ? ` and the window sticker does not clearly confirm ${listToSentence(remainingReasons)}` : ''}. Confirm the final rating on the door sticker or with a RAM dealer.`;
+  } else if (primary.trimFallback) {
+    const trimNote = primary.canadianTrimFallback
+      ? 'the Canadian-market trim name is not published as a separate source-chart row'
+      : `the ${spec.trim} trim is not published as a separate RAM chart row`;
+    const remainingReasons = reasons.filter((reason) => !/trim naming|published trim configuration/i.test(reason));
+    summary.note = `Range shown because ${trimNote}${remainingReasons.length ? ` and the window sticker does not clearly confirm ${listToSentence(remainingReasons)}` : ''}. Confirm on the door sticker or with your dealer.`;
+  } else {
+    summary.note = `Range shown because the window sticker does not clearly confirm ${summary.reasonText}. Confirm on the door sticker or with your dealer.`;
+  }
 
   return summary;
 }
@@ -508,12 +616,18 @@ function findMatches(spec, options = {}) {
 
   const matchedTowRows = rankedMatches(towRowsForYear, spec, false, { type: 'tow' });
   const matchedPayloadRows = rankedMatches(payloadRowsForYear, spec, true, { type: 'payload' });
+  const towTrimFallback = trimFallback(towRowsForYear, spec, false, 'tow');
+  const payloadTrimFallback = trimFallback(payloadRowsForYear, spec, true, 'payload');
   const towMatches = matchedTowRows.length
     ? matchedTowRows
-    : canadianTrimFallback(towRowsForYear, spec, false, 'tow');
+    : towTrimFallback.length
+      ? towTrimFallback
+      : hdRamBoxFallback(towRowsForYear, spec, false, 'tow', chartYear);
   const payloadMatches = matchedPayloadRows.length
     ? matchedPayloadRows
-    : canadianTrimFallback(payloadRowsForYear, spec, true, 'payload');
+    : payloadTrimFallback.length
+      ? payloadTrimFallback
+      : hdRamBoxFallback(payloadRowsForYear, spec, true, 'payload', chartYear);
 
   return {
     towMatches: towMatches.slice(0, 6),
@@ -537,7 +651,7 @@ function getOverrideOptions(spec, matches) {
 
   const compatibleRows = [...matches.towMatches, ...matches.payloadMatches]
     .filter((row) => {
-      return row.canadianTrimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
+      return row.trimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
     });
 
   for (const row of compatibleRows) {

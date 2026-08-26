@@ -192,10 +192,16 @@ function detectCab(stickerText, decoded) {
   );
 }
 
-function detectBed(vin, stickerText, decoded, model, cab, year) {
+function detectBed(vin, stickerText, decoded, model, cab, year, ramBox) {
   const stickerBed = normalizeBed(stickerText);
   if (stickerBed) {
     return stickerBed;
+  }
+
+  // HD RamBox is only offered with the Crew Cab 6'4" box. Some window
+  // stickers name the RamBox option but never print the box length.
+  if (ramBox && model !== '1500' && model !== '1500 Classic' && cab === 'Crew') {
+    return `6'4"`;
   }
 
   const decodedBedType = String(decoded.BedType || '').trim();
@@ -336,7 +342,23 @@ function detectDieselVariant(stickerText, decoded) {
 }
 
 function detectHemiVariant(stickerText) {
-  return /etorque|bsg/i.test(String(stickerText || '')) ? 'eTorque' : 'Standard';
+  const text = String(stickerText || '');
+  if (/etorque|bsg/i.test(text)) {
+    return 'eTorque';
+  }
+  // A usable sticker that names the 5.7L HEMI but not eTorque identifies the
+  // standard engine. A missing or unavailable sticker must stay unknown.
+  if (hasUsableStickerText(text) && /5\s*\.\s*7\s*l?[\s\S]{0,80}hemi|hemi[\s\S]{0,80}5\s*\.\s*7\s*l?/i.test(text)) {
+    return 'Standard';
+  }
+  return null;
+}
+
+function displayEngine(engine, engineVariant) {
+  if (engine === '5.7L HEMI V8 eTorque') {
+    return engineVariant === 'eTorque' ? engine : '5.7L HEMI V8';
+  }
+  return engine;
 }
 
 function detectTransmission(stickerText, decoded = {}) {
@@ -388,7 +410,8 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const stickerAvailable = hasUsableStickerText(stickerText);
   const decodedGvwrBounds = detectDecodedGvwrBounds(decoded.GVWR) || detectDecodedGvwrBounds(decoded.GVWR_to);
   const drive = normalizeDrive(stickerText) || normalizeDrive(decoded.DriveType);
-  const bed = detectBed(vin, stickerText, decoded, model, cab, year);
+  const ramBox = detectRamBox(stickerText);
+  const bed = detectBed(vin, stickerText, decoded, model, cab, year, ramBox);
   const rearWheels = detectRearWheels(vin, stickerText, model);
   const detectedEngine = detectEngine(stickerText, decoded);
   const engine = model === '1500 Classic'
@@ -402,6 +425,11 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
   const inferredGvwr = stickerGvwr
     ? null
     : infer2024ChartGvwr({ year, model, rearWheels }) || infer2025ChartGvwr({ year, model, engine, rearWheels, cab, bed, drive });
+  const engineVariant = (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
+    ? detectDieselVariant(stickerText, decoded)
+    : (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023) && engine === '5.7L HEMI V8 eTorque'
+      ? detectHemiVariant(stickerText)
+      : null;
   const spec = cleanSpec({
     vin,
     year,
@@ -410,13 +438,9 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     cab,
     bed,
     rearWheels,
-    ramBox: detectRamBox(stickerText),
+    ramBox,
     engine,
-    engineVariant: (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
-      ? detectDieselVariant(stickerText, decoded)
-      : (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023) && engine === '5.7L HEMI V8 eTorque'
-        ? detectHemiVariant(stickerText)
-        : null,
+    engineVariant,
     transmission: model === '1500 Classic' ? detectTransmission(stickerText, decoded) : null,
     trim,
     axleRatio: detectAxleRatio(stickerText),
@@ -426,6 +450,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
 
   return {
     ...spec,
+    displayEngine: displayEngine(spec.engine, spec.engineVariant),
     year,
     model,
     trim,
