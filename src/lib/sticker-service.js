@@ -136,6 +136,15 @@ function hasUsableStickerText(stickerText) {
   return !STICKER_UNAVAILABLE_PATTERN.test(text);
 }
 
+function hasFifthWheelGooseneckPrep(stickerText) {
+  const text = String(stickerText || '');
+  return [
+    /\b(?:5th|fifth)[-\s]?wheel\s*(?:\/|and|&)\s*gooseneck\s+(?:towing\s+)?prep(?:aration)?\s*(?:group|package)?\b/i,
+    /\bgooseneck(?:\s+hitch)?\s+(?:towing\s+)?prep(?:aration)?\s*(?:group|package)?\b/i,
+    /\b(?:5th|fifth)[-\s]?wheel\s+(?:towing\s+)?prep(?:aration)?\s*(?:group|package)?\b/i,
+  ].some((pattern) => pattern.test(text));
+}
+
 function detectTrim(stickerText, decoded) {
   const raw = decoded.Trim || '';
   if (raw) {
@@ -504,6 +513,7 @@ module.exports = {
   infer2024ChartGvwr,
   infer2025ChartGvwr,
   hasUsableStickerText,
+  hasFifthWheelGooseneckPrep,
   lookupVin,
   resolveLookupYear,
   detectDecodedGvwrBounds,

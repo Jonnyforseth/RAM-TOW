@@ -38,6 +38,7 @@ test('daily verified inventory snapshots filter by trailer requirements without 
         model: '2500',
         maxTow: 15000,
         maxPayload: 2800,
+        fifthWheelGooseneckPrep: true,
         inventoryMatch: { stockNumber: 'HD', currentPrice: 52000 },
       },
     ],
@@ -54,6 +55,37 @@ test('daily verified inventory snapshots filter by trailer requirements without 
   assert.equal(result.results[0].inventoryMatch.stockNumber, 'HD');
   assert.equal(result.results[0].towSurplus, 5000);
   assert.equal(result.results[0].payloadSurplus, 1800);
+});
+
+test('gooseneck inventory results require VIN-confirmed factory prep equipment', () => {
+  const snapshot = {
+    rows: [
+      {
+        model: '3500',
+        maxTow: 30000,
+        maxPayload: 5000,
+        fifthWheelGooseneckPrep: false,
+        inventoryMatch: { stockNumber: 'NO-PREP', currentPrice: 60000 },
+      },
+      {
+        model: '3500',
+        maxTow: 30000,
+        maxPayload: 5000,
+        fifthWheelGooseneckPrep: true,
+        inventoryMatch: { stockNumber: 'PREP', currentPrice: 62000 },
+      },
+    ],
+  };
+
+  const result = filterVerifiedInventorySnapshot(snapshot, {
+    trailerWeight: 15000,
+    tongueWeight: 1800,
+    hitchType: 'gooseneck',
+    modelPreference: '3500',
+  });
+
+  assert.equal(result.verifiedCount, 1);
+  assert.equal(result.results[0].inventoryMatch.stockNumber, 'PREP');
 });
 
 test('VIN lookups for 2025 and older route to the matching used RAM model inventory', async () => {

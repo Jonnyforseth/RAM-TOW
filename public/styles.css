@@ -2011,6 +2011,16 @@ body.fit-page::before {
   font-weight: 800;
 }
 
+.fit-inventory-prep {
+  padding: 9px 10px;
+  border-left: 3px solid var(--red);
+  background: #eee3d2;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
 .fit-inventory-capacity {
   display: grid;
   grid-template-columns: 1fr 1fr;

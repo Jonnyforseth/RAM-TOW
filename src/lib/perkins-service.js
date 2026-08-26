@@ -6,7 +6,7 @@ const {
   normalizeEngine,
   normalizeRearWheels,
 } = require('./chart-service');
-const { lookupVin } = require('./sticker-service');
+const { hasFifthWheelGooseneckPrep, lookupVin } = require('./sticker-service');
 
 const MODEL_LISTING_URLS = {
   '1500': 'https://perkinsmotors.com/sale/ram-1500-colorado-springs-co',
@@ -27,7 +27,7 @@ const DETAIL_CONCURRENCY = 6;
 const MAX_RESULTS = 12;
 const MAX_PER_TRIM = 2;
 const VERIFY_CONCURRENCY = 4;
-const INVENTORY_SNAPSHOT_VERSION = 1;
+const INVENTORY_SNAPSHOT_VERSION = 2;
 
 const inventoryCache = new Map();
 const inventorySourceCache = new Map();
@@ -918,6 +918,10 @@ function meetsTrailerRequirements(row, requirements = {}) {
     return false;
   }
 
+  if (requirements?.hitchType === 'gooseneck' && row.fifthWheelGooseneckPrep !== true) {
+    return false;
+  }
+
   return true;
 }
 
@@ -956,6 +960,7 @@ async function verifyInventoryCapabilities(inventoryMatch) {
         payloadGVWR: payloadMatch.gvwr || null,
         towCapacity: towMatch.maxTow,
         payloadCapacity: payloadMatch.maxPayload,
+        fifthWheelGooseneckPrep: hasFifthWheelGooseneckPrep(vinLookup.stickerText),
       };
     }
   } catch (_error) {
@@ -992,6 +997,7 @@ function createVerifiedInventoryRow(item, verified, requirements) {
     payloadSurplus: Number.isFinite(tongueWeight) && tongueWeight > 0
       ? verified.payloadCapacity - tongueWeight
       : null,
+    fifthWheelGooseneckPrep: verified.fifthWheelGooseneckPrep === true,
     confidence: 'high',
     verificationSource: 'vin',
     inventoryMatch: {
@@ -1206,6 +1212,7 @@ module.exports = {
   findBestInventoryMatch,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
+  INVENTORY_SNAPSHOT_VERSION,
   meetsTrailerRequirements,
   scoreInventoryMatch,
   sortVerifiedInventoryRows,

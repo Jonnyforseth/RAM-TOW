@@ -7,12 +7,12 @@ import { json } from '../functions/_shared/http.js';
 import { PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS, PERKINS_INVENTORY_SNAPSHOT_NAME, schedulePerkinsInventoryRefresh } from '../functions/_shared/perkins-inventory-snapshot.js';
 import perkinsService from './lib/perkins-service.js';
 
-const { buildVerifiedInventorySnapshot } = perkinsService;
+const { buildVerifiedInventorySnapshot, INVENTORY_SNAPSHOT_VERSION } = perkinsService;
 const DAILY_REFRESH_MS = 24 * 60 * 60 * 1000;
 
 function snapshotIsStale(snapshot) {
   const generatedAt = Date.parse(snapshot?.generatedAt || '');
-  return !Number.isFinite(generatedAt) || Date.now() - generatedAt >= PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS;
+  return Number(snapshot?.version) !== INVENTORY_SNAPSHOT_VERSION || !Number.isFinite(generatedAt) || Date.now() - generatedAt >= PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS;
 }
 
 export class PerkinsInventorySnapshot {

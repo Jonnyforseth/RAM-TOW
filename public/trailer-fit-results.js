@@ -319,6 +319,7 @@ function renderInventoryRow(row, target) {
       <p class="fit-inventory-price">${escapeHtml(formatPrice(inventory.currentPrice))}</p>
       <p class="fit-inventory-stock">Stock ${escapeHtml(inventory.stockNumber || 'available')}${mileage ? ` · ${escapeHtml(mileage)}` : ''} · VIN verified</p>
       <p class="fit-inventory-setup">${escapeHtml(setup || 'Configuration verified by VIN')}</p>
+      ${target.hitchType === 'gooseneck' ? '<p class="fit-inventory-prep">Factory fifth-wheel / gooseneck prep confirmed on the window sticker.</p>' : ''}
       <dl class="fit-inventory-capacity">
         <div><dt>Tow capacity</dt><dd>${escapeHtml(formatPounds(row.maxTow))}</dd></div>
         <div><dt>Payload capacity</dt><dd>${escapeHtml(formatPounds(row.maxPayload))}</dd></div>
@@ -374,7 +375,9 @@ async function loadLowestPricedInventory() {
       result_count: rows.length,
     });
     if (!rows.length) {
-      inventoryStatusNode.textContent = `We checked ${payload.checkedCount || 0} current Perkins listings and did not find a VIN-verified truck that clears this full trailer and payload target right now.`;
+      inventoryStatusNode.textContent = target.hitchType === 'gooseneck'
+        ? `We checked ${payload.checkedCount || 0} verified Perkins listings and did not find a truck that clears this load with factory fifth-wheel / gooseneck prep confirmed on its window sticker.`
+        : `We checked ${payload.checkedCount || 0} verified Perkins listings and did not find a VIN-verified truck that clears this full trailer and payload target right now.`;
       return;
     }
 

@@ -2,7 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { buildReverseInsights, buildReverseRecommendations, buildVinCapacitySummary, cleanSpec, findMatches, getOverrideOptions } = require('../src/lib/chart-service');
-const { detectGVWR, detectModelYearFromVin, detectVehicleMarket, extractDetectedSpec, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
+const { detectGVWR, detectModelYearFromVin, detectVehicleMarket, extractDetectedSpec, hasFifthWheelGooseneckPrep, infer2024ChartGvwr, infer2025ChartGvwr } = require('../src/lib/sticker-service');
+
+test('fifth-wheel and gooseneck inventory requires the factory prep group on the window sticker', () => {
+  assert.equal(hasFifthWheelGooseneckPrep('5TH WHEEL/GOOSENECK TOWING PREP GROUP'), true);
+  assert.equal(hasFifthWheelGooseneckPrep('Gooseneck Hitch Prep Package'), true);
+  assert.equal(hasFifthWheelGooseneckPrep('Trailer Tow Mirrors and Trailer Brake Controller'), false);
+});
 const { getPayloadRows, getTowRows, SUPPORTED_CHART_YEARS } = require('../src/data/chart-data');
 
 test('detectModelYearFromVin reads 2019 through 2026 model years from the VIN', () => {
