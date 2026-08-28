@@ -26,11 +26,6 @@ const vinPerkinsCta = document.querySelector('#vin-perkins-cta');
 const vinPerkinsTitle = document.querySelector('#vin-perkins-title');
 const vinPerkinsCopy = document.querySelector('#vin-perkins-copy');
 const vinPerkinsLink = document.querySelector('#vin-perkins-link');
-const vinBestPriceButton = document.querySelector('#vin-best-price-button');
-const vinBestPriceStatus = document.querySelector('#vin-best-price-status');
-const vinPriceComparison = document.querySelector('#vin-price-comparison');
-const vinPriceComparisonCopy = document.querySelector('#vin-price-comparison-copy');
-const vinPriceComparisonLink = document.querySelector('#vin-price-comparison-link');
 const vinTradeCta = document.querySelector('#vin-trade-cta');
 const vinTradeCopy = document.querySelector('#vin-trade-copy');
 const vinTradeLink = document.querySelector('#vin-trade-link');
@@ -387,8 +382,7 @@ function renderInventoryLink(row, target = null) {
 function renderVinPerkinsCta(response, spec) {
   const exactInventory = response.perkinsExactInventory;
   const link = exactInventory?.inventoryUrl ? { url: exactInventory.inventoryUrl } : response.perkinsInventoryLink;
-  const isCurrentNewModel = Number(spec?.year) >= 2025;
-  if ((!link?.url && !isCurrentNewModel) || !vinPerkinsCta || !vinPerkinsLink) {
+  if (!link?.url || !vinPerkinsCta || !vinPerkinsLink) {
     vinPerkinsCta?.classList.add('hidden');
     return;
   }
@@ -400,92 +394,21 @@ function renderVinPerkinsCta(response, spec) {
     .join(' | ');
   vinPerkinsTitle.textContent = isExactInventory
     ? 'This Truck Is Available at Perkins Motors'
-    : isCurrentNewModel
-    ? 'See Best Price on This Build'
     : 'See Comparable Trucks at Perkins Motors';
   vinPerkinsCopy.textContent = isExactInventory
     ? `${exactInventory.condition === 'new' ? 'This new RAM is' : 'This RAM is'} in stock at Perkins Motors${exactInventory.stockNumber ? `, stock ${exactInventory.stockNumber}` : ''}, listed at ${formatCurrency(exactInventory.currentPrice)}.${exactInventory.mileage != null && exactInventory.condition !== 'new' ? ` ${formatNumber(exactInventory.mileage)} miles.` : ''}`
-    : isCurrentNewModel
-    ? 'Check public new-vehicle pricing only when you ask. We will show a Perkins option only if it is a verified comparable build listed for less.'
     : isUsedInventory
     ? `View current used RAM ${spec?.model || ''} inventory at Perkins Motors.`
     : description
     ? `View current Perkins inventory filtered to this setup: ${description}.`
     : 'View the closest current Perkins inventory filters for this RAM setup.';
-  vinPerkinsLink.classList.toggle('hidden', isCurrentNewModel && !isExactInventory);
-  vinBestPriceButton?.classList.toggle('hidden', !isCurrentNewModel || isExactInventory);
-  hideStatus(vinBestPriceStatus);
-  if (link?.url) {
-    vinPerkinsLink.href = link.url;
-    vinPerkinsLink.dataset.perkinsInventoryClick = isExactInventory ? 'vin_lookup_exact_stock' : 'vin_lookup_setup';
-    vinPerkinsLink.dataset.ramModel = spec?.model || '';
-    vinPerkinsLink.textContent = isExactInventory
-      ? 'View This Truck at Perkins Motors'
-      : 'See Comparable Trucks at Perkins Motors';
-  }
+  vinPerkinsLink.href = link.url;
+  vinPerkinsLink.dataset.perkinsInventoryClick = isExactInventory ? 'vin_lookup_exact_stock' : 'vin_lookup_setup';
+  vinPerkinsLink.dataset.ramModel = spec?.model || '';
+  vinPerkinsLink.textContent = isExactInventory
+    ? 'View This Truck at Perkins Motors'
+    : 'See Comparable Trucks at Perkins Motors';
   vinPerkinsCta.classList.remove('hidden');
-}
-
-function resetVinPriceComparison() {
-  vinPriceComparison?.classList.add('hidden');
-  if (vinPriceComparisonCopy) {
-    vinPriceComparisonCopy.textContent = '';
-  }
-}
-
-function renderVinPriceComparison(result, model) {
-  if (!vinPriceComparison || !vinPriceComparisonCopy || !vinPriceComparisonLink || result?.state !== 'lower_priced_match') {
-    resetVinPriceComparison();
-    return;
-  }
-
-  const comparable = result.comparable || {};
-  vinPriceComparisonCopy.textContent = `A ${result.matchPercent}% configuration match is listed at Perkins for ${formatCurrency(comparable.currentPrice)}, ${formatCurrency(result.savings)} below the public advertised price found for the VIN you searched.`;
-  vinPriceComparisonLink.href = comparable.inventoryUrl;
-  vinPriceComparisonLink.dataset.perkinsInventoryClick = 'vin_lookup_lower_price_match';
-  vinPriceComparisonLink.dataset.ramModel = model || '';
-  vinPriceComparison.classList.remove('hidden');
-}
-
-async function requestNewVehicleComparison(response) {
-  if (!response?.vin || vinBestPriceButton?.disabled) {
-    return;
-  }
-  resetVinPriceComparison();
-  if (response?.perkinsExactInventory?.inventoryUrl || Number(response?.detectedSpec?.year) < 2025) {
-    return;
-  }
-
-  vinBestPriceButton.disabled = true;
-  vinBestPriceButton.textContent = 'Checking New-Vehicle Pricing...';
-  showStatus(vinBestPriceStatus, 'Checking public new-vehicle listings and the daily verified Perkins inventory snapshot...');
-  trackAnalytics('best_price_check_started', { ram_model: response.detectedSpec?.model || 'unknown' });
-  try {
-    const result = await fetchJson('/api/compare-new-vin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vin: response.vin }),
-    });
-    if (vinLastResponse?.vin === response.vin) {
-      if (result.state === 'perkins_exact' && result.exactInventory) {
-        response.perkinsExactInventory = result.exactInventory;
-        renderVinPerkinsCta(response, response.detectedSpec);
-        showStatus(vinBestPriceStatus, 'This VIN is in the verified Perkins inventory snapshot.');
-        return;
-      }
-      renderVinPriceComparison(result, response.detectedSpec?.model);
-      if (result.state !== 'lower_priced_match') {
-        showStatus(vinBestPriceStatus, 'No lower-priced verified Perkins match is available right now. You can still request a RAM Tow Expert review below.');
-      } else {
-        hideStatus(vinBestPriceStatus);
-      }
-    }
-  } catch (error) {
-    showStatus(vinBestPriceStatus, error.message || 'New-vehicle pricing could not be checked right now. Please try again shortly.', true);
-  } finally {
-    vinBestPriceButton.disabled = false;
-    vinBestPriceButton.textContent = 'See Best Price on This Build';
-  }
 }
 
 function setTradeCtaVisible(isVisible) {
@@ -621,7 +544,6 @@ function renderVinResponse(response, detectedSpec = response.detectedSpec) {
 }
 
 function showVinLookupResponse(response) {
-  resetVinPriceComparison();
   vinMeasurementUnit = 'lb';
   for (const button of vinUnitButtons) {
     const isSelected = button.dataset.vinUnit === vinMeasurementUnit;
@@ -1441,10 +1363,6 @@ if (vinScanButton) {
     void openVinScanModal();
   });
 }
-
-vinBestPriceButton?.addEventListener('click', () => {
-  void requestNewVehicleComparison(vinLastResponse);
-});
 
 if (vinScanCloseButton) {
   vinScanCloseButton.addEventListener('click', () => {

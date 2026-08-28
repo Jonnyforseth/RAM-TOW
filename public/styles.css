@@ -982,11 +982,6 @@ body::before {
   margin-top: 4px;
 }
 
-.comparison-cta {
-  border-left-color: var(--red);
-  background: linear-gradient(135deg, rgba(255, 247, 238, 0.98), rgba(229, 220, 208, 0.8));
-}
-
 .lead-cta {
   border-left-color: var(--steel);
 }

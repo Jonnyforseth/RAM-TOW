@@ -16,11 +16,10 @@ const {
 const {
   attachInventorySearchLinks,
   buildVerifiedInventorySnapshot,
-  findLowerPricedNewComparable,
   findLowestPricedVerifiedInventory,
   findVerifiedInventoryByVin,
 } = require('./lib/perkins-service');
-const { getVinInventoryLink, buildInventorySetup } = require('./lib/inventory-link-service');
+const { getVinInventoryLink } = require('./lib/inventory-link-service');
 const { lookupVin } = require('./lib/sticker-service');
 
 const app = express();
@@ -131,60 +130,6 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
       ok: false,
       error: error.message,
     });
-  }
-});
-
-app.post('/api/compare-new-vin', async (req, res) => {
-  try {
-    const vin = String(req.body?.vin || '').trim().toUpperCase();
-    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
-      throw new Error('Enter a valid 17-character VIN first.');
-    }
-
-    const snapshot = await getLocalInventorySnapshot();
-    const exactRow = findVerifiedInventoryByVin(snapshot, vin);
-    if (exactRow?.inventoryMatch) {
-      res.json({ ok: true, state: 'perkins_exact', exactInventory: exactRow.inventoryMatch });
-      return;
-    }
-
-    const vinResult = await lookupVin(vin);
-    const modelYear = Number(vinResult.detectedSpec?.year);
-    if (!Number.isFinite(modelYear) || modelYear < 2025) {
-      res.json({ ok: true, state: 'not_current_new' });
-      return;
-    }
-
-    const { findPublicNewVehicleListing } = await import('../functions/_shared/new-vehicle-listing.js');
-    const listingSearch = await findPublicNewVehicleListing(vin, process.env);
-    if (listingSearch.state !== 'found' || !listingSearch.listing) {
-      res.json({ ok: true, state: listingSearch.state });
-      return;
-    }
-
-    const matches = findMatches(vinResult.detectedSpec, { year: modelYear });
-    const target = buildInventorySetup(vinResult.detectedSpec, matches);
-    const comparable = findLowerPricedNewComparable(snapshot, target, listingSearch.listing.price);
-    if (!comparable?.inventoryMatch) {
-      res.json({
-        ok: true,
-        state: 'no_lower_match',
-        competitor: { seller: listingSearch.listing.seller, price: listingSearch.listing.price },
-      });
-      return;
-    }
-
-    res.json({
-      ok: true,
-      state: 'lower_priced_match',
-      competitor: { seller: listingSearch.listing.seller, price: listingSearch.listing.price },
-      comparable: comparable.inventoryMatch,
-      matchPercent: comparable.comparison.matchPercent,
-      savings: comparable.comparison.savings,
-      checkedAt: snapshot.generatedAt || null,
-    });
-  } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || 'New-vehicle pricing could not be checked.' });
   }
 });
 
