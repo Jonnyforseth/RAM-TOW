@@ -1,5 +1,15 @@
 const express = require('express');
 const path = require('path');
+
+// Load local-only credentials when present. Cloudflare provides production secrets at runtime.
+try {
+  process.loadEnvFile(path.resolve(__dirname, '..', '.env'));
+} catch (error) {
+  if (error?.code !== 'ENOENT') {
+    console.warn('Unable to load local .env file:', error.message);
+  }
+}
+
 const { SUPPORTED_CHART_YEARS } = require('./data/chart-data');
 const {
   buildReverseInsights,
