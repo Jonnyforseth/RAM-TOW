@@ -13,12 +13,39 @@ const {
   towRows,
   payloadRows,
 } = require('./lib/chart-service');
-const { attachInventorySearchLinks, findLowestPricedVerifiedInventory } = require('./lib/perkins-service');
-const { getVinInventoryLink } = require('./lib/inventory-link-service');
+const {
+  attachInventorySearchLinks,
+  buildVerifiedInventorySnapshot,
+  findLowerPricedNewComparable,
+  findLowestPricedVerifiedInventory,
+  findVerifiedInventoryByVin,
+} = require('./lib/perkins-service');
+const { getVinInventoryLink, buildInventorySetup } = require('./lib/inventory-link-service');
 const { lookupVin } = require('./lib/sticker-service');
 
 const app = express();
 const PORT = 4324;
+const LOCAL_SNAPSHOT_MAX_AGE_MS = 26 * 60 * 60 * 1000;
+let localInventorySnapshot = null;
+let localInventorySnapshotPromise = null;
+
+async function getLocalInventorySnapshot() {
+  const generatedAt = Date.parse(localInventorySnapshot?.generatedAt || '');
+  if (localInventorySnapshot && Number.isFinite(generatedAt) && Date.now() - generatedAt < LOCAL_SNAPSHOT_MAX_AGE_MS) {
+    return localInventorySnapshot;
+  }
+  if (!localInventorySnapshotPromise) {
+    localInventorySnapshotPromise = buildVerifiedInventorySnapshot()
+      .then((snapshot) => {
+        localInventorySnapshot = snapshot;
+        return snapshot;
+      })
+      .finally(() => {
+        localInventorySnapshotPromise = null;
+      });
+  }
+  return localInventorySnapshotPromise;
+}
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public'), {
@@ -28,6 +55,21 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     }
   },
 }));
+
+app.post('/api/lead', async (req, res) => {
+  try {
+    const { onRequestPost } = await import('../functions/api/lead.js');
+    const request = new Request(`http://localhost:${PORT}/api/lead`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+    });
+    const response = await onRequestPost({ request, env: process.env });
+    res.status(response.status).type('application/json').send(await response.text());
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message || 'Unable to submit this request.' });
+  }
+});
 
 app.get('/api/health', async (_req, res) => {
   await Promise.all(SUPPORTED_CHART_YEARS.map((year) => ensureChartTexts(year)));
@@ -49,11 +91,18 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
     const matches = findMatches(vinResult.detectedSpec, { year: chartYear });
     const rawHints = await findRawChartHints(vinResult.detectedSpec, { year: chartYear });
     let perkinsInventoryLink = null;
+    let perkinsExactInventory = null;
 
-    try {
-      perkinsInventoryLink = await getVinInventoryLink(vinResult.detectedSpec, matches);
-    } catch (_error) {
-      // A temporary inventory request must not block the VIN capacity result.
+    if (Number(chartYear) < 2026) {
+      try {
+        perkinsInventoryLink = await getVinInventoryLink(vinResult.detectedSpec, matches);
+      } catch (_error) {
+        // A temporary inventory request must not block the VIN capacity result.
+      }
+    }
+
+    if (localInventorySnapshot) {
+      perkinsExactInventory = findVerifiedInventoryByVin(localInventorySnapshot, vinResult.vin)?.inventoryMatch || null;
     }
 
     res.json({
@@ -71,6 +120,7 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
       overrideOptions: getOverrideOptions(vinResult.detectedSpec, matches),
       rawHints,
       perkinsInventoryLink,
+      perkinsExactInventory,
       notes: [
         `Results are based on the ${chartYear} RAM towing and payload PDFs loaded into this local site.`,
         'If bed length, GVWR, or rear wheel setup is missing from the sticker, use the override fields to lock in the exact configuration.',
@@ -81,6 +131,60 @@ app.get('/api/lookup-vin/:vin', async (req, res) => {
       ok: false,
       error: error.message,
     });
+  }
+});
+
+app.post('/api/compare-new-vin', async (req, res) => {
+  try {
+    const vin = String(req.body?.vin || '').trim().toUpperCase();
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
+      throw new Error('Enter a valid 17-character VIN first.');
+    }
+
+    const snapshot = await getLocalInventorySnapshot();
+    const exactRow = findVerifiedInventoryByVin(snapshot, vin);
+    if (exactRow?.inventoryMatch) {
+      res.json({ ok: true, state: 'perkins_exact', exactInventory: exactRow.inventoryMatch });
+      return;
+    }
+
+    const vinResult = await lookupVin(vin);
+    const modelYear = Number(vinResult.detectedSpec?.year);
+    if (!Number.isFinite(modelYear) || modelYear < 2025) {
+      res.json({ ok: true, state: 'not_current_new' });
+      return;
+    }
+
+    const { findPublicNewVehicleListing } = await import('../functions/_shared/new-vehicle-listing.js');
+    const listingSearch = await findPublicNewVehicleListing(vin, process.env);
+    if (listingSearch.state !== 'found' || !listingSearch.listing) {
+      res.json({ ok: true, state: listingSearch.state });
+      return;
+    }
+
+    const matches = findMatches(vinResult.detectedSpec, { year: modelYear });
+    const target = buildInventorySetup(vinResult.detectedSpec, matches);
+    const comparable = findLowerPricedNewComparable(snapshot, target, listingSearch.listing.price);
+    if (!comparable?.inventoryMatch) {
+      res.json({
+        ok: true,
+        state: 'no_lower_match',
+        competitor: { seller: listingSearch.listing.seller, price: listingSearch.listing.price },
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      state: 'lower_priced_match',
+      competitor: { seller: listingSearch.listing.seller, price: listingSearch.listing.price },
+      comparable: comparable.inventoryMatch,
+      matchPercent: comparable.comparison.matchPercent,
+      savings: comparable.comparison.savings,
+      checkedAt: snapshot.generatedAt || null,
+    });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message || 'New-vehicle pricing could not be checked.' });
   }
 });
 

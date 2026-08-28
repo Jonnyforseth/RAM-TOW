@@ -23,13 +23,29 @@ const vinAxleSelect = document.querySelector('#vin-axle-select');
 const vinGvwrField = document.querySelector('#vin-gvwr-field');
 const vinGvwrSelect = document.querySelector('#vin-gvwr-select');
 const vinPerkinsCta = document.querySelector('#vin-perkins-cta');
+const vinPerkinsTitle = document.querySelector('#vin-perkins-title');
 const vinPerkinsCopy = document.querySelector('#vin-perkins-copy');
 const vinPerkinsLink = document.querySelector('#vin-perkins-link');
+const vinBestPriceButton = document.querySelector('#vin-best-price-button');
+const vinBestPriceStatus = document.querySelector('#vin-best-price-status');
+const vinPriceComparison = document.querySelector('#vin-price-comparison');
+const vinPriceComparisonCopy = document.querySelector('#vin-price-comparison-copy');
+const vinPriceComparisonLink = document.querySelector('#vin-price-comparison-link');
 const vinTradeCta = document.querySelector('#vin-trade-cta');
 const vinTradeCopy = document.querySelector('#vin-trade-copy');
 const vinTradeLink = document.querySelector('#vin-trade-link');
 const vinUnitControl = document.querySelector('#vin-unit-control');
 const vinUnitButtons = [...document.querySelectorAll('[data-vin-unit]')];
+const vinLeadForm = document.querySelector('#vin-lead-form');
+const vinLeadStatus = document.querySelector('#vin-lead-status');
+const vinLeadName = document.querySelector('#vin-lead-name');
+const vinLeadZip = document.querySelector('#vin-lead-zip');
+const vinLeadEmail = document.querySelector('#vin-lead-email');
+const vinLeadPhone = document.querySelector('#vin-lead-phone');
+const vinLeadPreference = document.querySelector('#vin-lead-preference');
+const vinLeadMessage = document.querySelector('#vin-lead-message');
+const vinLeadConsent = document.querySelector('#vin-lead-consent');
+const vinLeadCompany = document.querySelector('#vin-lead-company');
 
 const reverseForm = document.querySelector('#reverse-form');
 const reverseStatus = document.querySelector('#reverse-status');
@@ -191,6 +207,13 @@ function formatCapacityRange(min, max) {
     return formatCapacity(min);
   }
   return `${formatNumber(min)}-${formatNumber(max)} lb`;
+}
+
+function formatCurrency(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+    : '-';
 }
 
 function formatVinMass(value) {
@@ -362,28 +385,107 @@ function renderInventoryLink(row, target = null) {
 }
 
 function renderVinPerkinsCta(response, spec) {
-  const link = response.perkinsInventoryLink;
-  if (!link?.url || !vinPerkinsCta || !vinPerkinsLink) {
+  const exactInventory = response.perkinsExactInventory;
+  const link = exactInventory?.inventoryUrl ? { url: exactInventory.inventoryUrl } : response.perkinsInventoryLink;
+  const isCurrentNewModel = Number(spec?.year) >= 2025;
+  if ((!link?.url && !isCurrentNewModel) || !vinPerkinsCta || !vinPerkinsLink) {
     vinPerkinsCta?.classList.add('hidden');
     return;
   }
 
-  const isUsedInventory = link.inventoryType === 'used';
+  const isExactInventory = Boolean(exactInventory?.inventoryUrl);
+  const isUsedInventory = !isExactInventory && link?.inventoryType === 'used';
   const description = [spec?.model ? `RAM ${spec.model}` : null, spec?.engine, spec?.drive, spec?.cab, spec?.bed]
     .filter(Boolean)
     .join(' | ');
-  vinPerkinsCopy.textContent = isUsedInventory
+  vinPerkinsTitle.textContent = isExactInventory
+    ? 'This Truck Is Available at Perkins Motors'
+    : isCurrentNewModel
+    ? 'See Best Price on This Build'
+    : 'See Comparable Trucks at Perkins Motors';
+  vinPerkinsCopy.textContent = isExactInventory
+    ? `${exactInventory.condition === 'new' ? 'This new RAM is' : 'This RAM is'} in stock at Perkins Motors${exactInventory.stockNumber ? `, stock ${exactInventory.stockNumber}` : ''}, listed at ${formatCurrency(exactInventory.currentPrice)}.${exactInventory.mileage != null && exactInventory.condition !== 'new' ? ` ${formatNumber(exactInventory.mileage)} miles.` : ''}`
+    : isCurrentNewModel
+    ? 'Check public new-vehicle pricing only when you ask. We will show a Perkins option only if it is a verified comparable build listed for less.'
+    : isUsedInventory
     ? `View current used RAM ${spec?.model || ''} inventory at Perkins Motors.`
     : description
     ? `View current Perkins inventory filtered to this setup: ${description}.`
     : 'View the closest current Perkins inventory filters for this RAM setup.';
-  vinPerkinsLink.href = link.url;
-  vinPerkinsLink.dataset.perkinsInventoryClick = 'vin_lookup_setup';
-  vinPerkinsLink.dataset.ramModel = spec?.model || '';
-  vinPerkinsLink.textContent = isUsedInventory
-    ? `Shop Used RAM ${spec?.model || ''}s`
-    : 'Find This Setup at Perkins Motors';
+  vinPerkinsLink.classList.toggle('hidden', isCurrentNewModel && !isExactInventory);
+  vinBestPriceButton?.classList.toggle('hidden', !isCurrentNewModel || isExactInventory);
+  hideStatus(vinBestPriceStatus);
+  if (link?.url) {
+    vinPerkinsLink.href = link.url;
+    vinPerkinsLink.dataset.perkinsInventoryClick = isExactInventory ? 'vin_lookup_exact_stock' : 'vin_lookup_setup';
+    vinPerkinsLink.dataset.ramModel = spec?.model || '';
+    vinPerkinsLink.textContent = isExactInventory
+      ? 'View This Truck at Perkins Motors'
+      : 'See Comparable Trucks at Perkins Motors';
+  }
   vinPerkinsCta.classList.remove('hidden');
+}
+
+function resetVinPriceComparison() {
+  vinPriceComparison?.classList.add('hidden');
+  if (vinPriceComparisonCopy) {
+    vinPriceComparisonCopy.textContent = '';
+  }
+}
+
+function renderVinPriceComparison(result, model) {
+  if (!vinPriceComparison || !vinPriceComparisonCopy || !vinPriceComparisonLink || result?.state !== 'lower_priced_match') {
+    resetVinPriceComparison();
+    return;
+  }
+
+  const comparable = result.comparable || {};
+  vinPriceComparisonCopy.textContent = `A ${result.matchPercent}% configuration match is listed at Perkins for ${formatCurrency(comparable.currentPrice)}, ${formatCurrency(result.savings)} below the public advertised price found for the VIN you searched.`;
+  vinPriceComparisonLink.href = comparable.inventoryUrl;
+  vinPriceComparisonLink.dataset.perkinsInventoryClick = 'vin_lookup_lower_price_match';
+  vinPriceComparisonLink.dataset.ramModel = model || '';
+  vinPriceComparison.classList.remove('hidden');
+}
+
+async function requestNewVehicleComparison(response) {
+  if (!response?.vin || vinBestPriceButton?.disabled) {
+    return;
+  }
+  resetVinPriceComparison();
+  if (response?.perkinsExactInventory?.inventoryUrl || Number(response?.detectedSpec?.year) < 2025) {
+    return;
+  }
+
+  vinBestPriceButton.disabled = true;
+  vinBestPriceButton.textContent = 'Checking New-Vehicle Pricing...';
+  showStatus(vinBestPriceStatus, 'Checking public new-vehicle listings and the daily verified Perkins inventory snapshot...');
+  trackAnalytics('best_price_check_started', { ram_model: response.detectedSpec?.model || 'unknown' });
+  try {
+    const result = await fetchJson('/api/compare-new-vin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vin: response.vin }),
+    });
+    if (vinLastResponse?.vin === response.vin) {
+      if (result.state === 'perkins_exact' && result.exactInventory) {
+        response.perkinsExactInventory = result.exactInventory;
+        renderVinPerkinsCta(response, response.detectedSpec);
+        showStatus(vinBestPriceStatus, 'This VIN is in the verified Perkins inventory snapshot.');
+        return;
+      }
+      renderVinPriceComparison(result, response.detectedSpec?.model);
+      if (result.state !== 'lower_priced_match') {
+        showStatus(vinBestPriceStatus, 'No lower-priced verified Perkins match is available right now. You can still request a RAM Tow Expert review below.');
+      } else {
+        hideStatus(vinBestPriceStatus);
+      }
+    }
+  } catch (error) {
+    showStatus(vinBestPriceStatus, error.message || 'New-vehicle pricing could not be checked right now. Please try again shortly.', true);
+  } finally {
+    vinBestPriceButton.disabled = false;
+    vinBestPriceButton.textContent = 'See Best Price on This Build';
+  }
 }
 
 function setTradeCtaVisible(isVisible) {
@@ -519,6 +621,7 @@ function renderVinResponse(response, detectedSpec = response.detectedSpec) {
 }
 
 function showVinLookupResponse(response) {
+  resetVinPriceComparison();
   vinMeasurementUnit = 'lb';
   for (const button of vinUnitButtons) {
     const isSelected = button.dataset.vinUnit === vinMeasurementUnit;
@@ -1294,11 +1397,54 @@ vinForm.addEventListener('submit', async (event) => {
   }
 });
 
+vinLeadForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  hideStatus(vinLeadStatus);
+
+  const response = vinLastResponse;
+  if (!response?.vin) {
+    showStatus(vinLeadStatus, 'Run a VIN before requesting confirmation.', true);
+    return;
+  }
+
+  const payload = {
+    name: vinLeadName?.value,
+    zip: vinLeadZip?.value,
+    email: vinLeadEmail?.value,
+    phone: vinLeadPhone?.value,
+    contactPreference: vinLeadPreference?.value,
+    message: vinLeadMessage?.value,
+    consent: Boolean(vinLeadConsent?.checked),
+    company: vinLeadCompany?.value,
+    vin: response.vin,
+    towCapacity: towCapacity?.textContent,
+    payloadCapacity: payloadCapacity?.textContent,
+  };
+
+  try {
+    await fetchJson('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    vinLeadForm.reset();
+    showStatus(vinLeadStatus, 'Your request is in. A RAM Tow Expert will follow up using your selected contact method.');
+    // The event intentionally contains no VIN, trailer, pricing, or contact data.
+    trackAnalytics('ram_tow_inquiry_submitted', { inquiry_context: 'vin_lookup' });
+  } catch (error) {
+    showStatus(vinLeadStatus, error.message || 'We could not send your request. Please try again.', true);
+  }
+});
+
 if (vinScanButton) {
   vinScanButton.addEventListener('click', () => {
     void openVinScanModal();
   });
 }
+
+vinBestPriceButton?.addEventListener('click', () => {
+  void requestNewVehicleComparison(vinLastResponse);
+});
 
 if (vinScanCloseButton) {
   vinScanCloseButton.addEventListener('click', () => {

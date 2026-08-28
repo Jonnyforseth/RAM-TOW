@@ -368,6 +368,18 @@ body::before {
   color: var(--ink);
 }
 
+.home-page .inventory-cta .status {
+  border-color: rgba(74, 84, 96, 0.2);
+  background: rgba(255, 250, 241, 0.84);
+  color: var(--ink);
+}
+
+.home-page .inventory-cta .status.error {
+  border-color: rgba(165, 31, 31, 0.24);
+  background: rgba(180, 42, 42, 0.1);
+  color: #8d2525;
+}
+
 .home-page .inventory-cta .button-secondary {
   border-color: rgba(28, 24, 20, 0.72);
   background:
@@ -381,6 +393,25 @@ body::before {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0)),
     linear-gradient(180deg, #edcf9a 0%, #bc955e 100%);
+}
+
+.home-page #vin-perkins-cta {
+  gap: 12px;
+  padding: 22px 24px;
+}
+
+.home-page #vin-perkins-cta h3 {
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+}
+
+.home-page #vin-perkins-cta > p {
+  font-size: 1rem;
+}
+
+.home-page #vin-perkins-cta .button {
+  min-height: 52px;
+  padding: 13px 20px;
+  font-size: 0.96rem;
 }
 
 .grid {
@@ -949,6 +980,58 @@ body::before {
 .inventory-cta .button {
   justify-self: start;
   margin-top: 4px;
+}
+
+.comparison-cta {
+  border-left-color: var(--red);
+  background: linear-gradient(135deg, rgba(255, 247, 238, 0.98), rgba(229, 220, 208, 0.8));
+}
+
+.lead-cta {
+  border-left-color: var(--steel);
+}
+
+.home-page .lead-cta .field span,
+.home-page .lead-cta .lead-consent {
+  color: var(--ink);
+}
+
+.home-page .lead-cta .field small {
+  color: var(--ink-soft);
+}
+
+.lead-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.lead-form textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.lead-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lead-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.lead-consent input {
+  width: auto;
+  margin-top: 3px;
 }
 
 .trade-cta {

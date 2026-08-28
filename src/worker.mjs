@@ -3,6 +3,8 @@ import { onRequestGet as onLookupVinGet } from '../functions/api/lookup-vin/[vin
 import { onRequestPost as onMatchConfigPost } from '../functions/api/match-config.js';
 import { onRequestPost as onReverseLookupPost } from '../functions/api/reverse-lookup.js';
 import { onRequestPost as onPerkinsCapableInventoryPost } from '../functions/api/perkins-capable-inventory.js';
+import { onRequestPost as onCompareNewVinPost } from '../functions/api/compare-new-vin.js';
+import { onRequestPost as onLeadPost } from '../functions/api/lead.js';
 import { json } from '../functions/_shared/http.js';
 import { PERKINS_INVENTORY_SNAPSHOT_MAX_AGE_MS, PERKINS_INVENTORY_SNAPSHOT_NAME, schedulePerkinsInventoryRefresh } from '../functions/_shared/perkins-inventory-snapshot.js';
 import perkinsService from './lib/perkins-service.js';
@@ -191,6 +193,20 @@ export default {
         return methodNotAllowed();
       }
       return onPerkinsCapableInventoryPost({ request, env });
+    }
+
+    if (pathname === '/api/compare-new-vin') {
+      if (request.method !== 'POST') {
+        return methodNotAllowed();
+      }
+      return onCompareNewVinPost({ request, env });
+    }
+
+    if (pathname === '/api/lead') {
+      if (request.method !== 'POST') {
+        return methodNotAllowed();
+      }
+      return onLeadPost({ request, env });
     }
 
     const staticPage = STATIC_LANDING_PAGES.get(pathname);

@@ -8,6 +8,8 @@ const {
   dedupeInventoryByVin,
   extractMileage,
   findBestInventoryMatch,
+  findLowerPricedNewComparable,
+  findVerifiedInventoryByVin,
   filterVerifiedInventorySnapshot,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
@@ -380,4 +382,73 @@ test('getMatchingPerkinsEngineFilters includes generic and Cummins-labelled 6.7L
     '6.7L I6 Cummins HO Turbo Diesel Eng',
     'Cummins 6.7L I6 Turbodiesel',
   ]);
+});
+
+test('new VIN price comparisons require a matching towing-critical configuration', () => {
+  const snapshot = {
+    rows: [
+      {
+        model: '1500',
+        engine: '3.0L Hurricane SO',
+        drive: '4x4',
+        cab: 'Crew',
+        bed: `5'7"`,
+        rearWheels: 'SRW',
+        axleRatio: '3.92',
+        trim: 'Big Horn',
+        inventoryMatch: {
+          inventoryVin: '1C6RREJP1TN000001',
+          inventoryUrl: 'https://perkinsmotors.com/example',
+          currentPrice: 52000,
+          condition: 'new',
+        },
+      },
+      {
+        model: '1500',
+        engine: '3.0L Hurricane SO',
+        drive: '4x2',
+        cab: 'Crew',
+        bed: `5'7"`,
+        rearWheels: 'SRW',
+        axleRatio: '3.92',
+        trim: 'Big Horn',
+        inventoryMatch: {
+          inventoryVin: '1C6RREJP1TN000002',
+          inventoryUrl: 'https://perkinsmotors.com/wrong-drive',
+          currentPrice: 48000,
+          condition: 'new',
+        },
+      },
+    ],
+  };
+  const target = {
+    model: '1500',
+    engine: '3.0L Hurricane SO',
+    drive: '4x4',
+    cab: 'Crew',
+    bed: `5'7"`,
+    rearWheels: 'SRW',
+    axleRatio: '3.92',
+    trim: 'Big Horn',
+  };
+
+  const match = findLowerPricedNewComparable(snapshot, target, 56000);
+
+  assert.ok(match);
+  assert.equal(match.inventoryMatch.inventoryVin, '1C6RREJP1TN000001');
+  assert.equal(match.comparison.matchPercent, 100);
+  assert.equal(match.comparison.savings, 4000);
+});
+
+test('an exact Perkins stock VIN is found directly from the daily snapshot', () => {
+  const row = {
+    inventoryMatch: {
+      inventoryVin: '1C6RREJP1TN000001',
+      inventoryUrl: 'https://perkinsmotors.com/example',
+      currentPrice: 52000,
+    },
+  };
+  const found = findVerifiedInventoryByVin({ rows: [row] }, '1c6rrejp1tn000001');
+
+  assert.equal(found, row);
 });

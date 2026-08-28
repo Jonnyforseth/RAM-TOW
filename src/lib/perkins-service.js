@@ -1180,6 +1180,28 @@ async function buildVerifiedInventorySnapshot() {
   };
 }
 
+async function findPerkinsInventoryByVin(vin, model) {
+  const normalizedVin = String(vin || '').trim().toUpperCase();
+  const models = MODEL_LISTING_URLS[String(model || '')]
+    ? [String(model)]
+    : ['1500', '2500', '3500'];
+  const inventories = await Promise.all(models.map((itemModel) => loadModelInventory(itemModel)));
+  const item = inventories.flat().find((candidate) => candidate.inventoryVin === normalizedVin);
+  if (!item || !item.inventoryUrl || !Number.isFinite(item.price)) {
+    return null;
+  }
+
+  return {
+    stockNumber: item.stockNumber || null,
+    inventoryUrl: item.inventoryUrl,
+    inventoryTitle: item.title,
+    inventoryVin: item.inventoryVin,
+    currentPrice: item.price,
+    condition: item.condition || 'used',
+    mileage: item.mileage ?? null,
+  };
+}
+
 function filterVerifiedInventorySnapshot(snapshot, requirements = {}) {
   const requestedModel = String(requirements.modelPreference || '').trim();
   const sourceRows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
@@ -1212,6 +1234,143 @@ function filterVerifiedInventorySnapshot(snapshot, requirements = {}) {
   };
 }
 
+function findVerifiedInventoryByVin(snapshot, vin) {
+  const normalizedVin = String(vin || '').trim().toUpperCase();
+  if (!normalizedVin) {
+    return null;
+  }
+
+  return (snapshot?.rows || []).find((row) =>
+    String(row?.inventoryMatch?.inventoryVin || '').trim().toUpperCase() === normalizedVin
+  ) || null;
+}
+
+function normalizeComparableValue(field, value) {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  if (field === 'engine') {
+    return normalizeEngine(value);
+  }
+  if (field === 'drive') {
+    return normalizeDrive(value);
+  }
+  if (field === 'cab') {
+    return normalizeCab(value);
+  }
+  if (field === 'bed') {
+    return normalizeBed(value);
+  }
+  if (field === 'rearWheels') {
+    return normalizeRearWheels(value);
+  }
+  if (field === 'trim') {
+    return normalizeTrim(value);
+  }
+  return String(value).trim();
+}
+
+function sameComparableValue(field, expected, actual) {
+  const normalizedExpected = normalizeComparableValue(field, expected);
+  const normalizedActual = normalizeComparableValue(field, actual);
+  return Boolean(normalizedExpected && normalizedActual && normalizedExpected === normalizedActual);
+}
+
+// A price comparison is only useful when every chart-critical truck detail is
+// compatible. The percentage below describes configuration similarity; it is
+// never used to relax an engine, drive, cab, bed, rear-wheel, or known axle
+// mismatch.
+function scoreNewVehicleComparable(target = {}, candidate = {}) {
+  const criticalFields = [
+    ['model', 8],
+    ['engine', 25],
+    ['drive', 20],
+    ['cab', 15],
+    ['bed', 10],
+    ['rearWheels', 10],
+    ['axleRatio', 8],
+  ];
+  const optionalFields = [
+    ['trim', 4],
+  ];
+  let score = 0;
+  let availableWeight = 0;
+
+  for (const [field, weight] of criticalFields) {
+    const expected = target[field];
+    if (expected == null || expected === '') {
+      continue;
+    }
+    availableWeight += weight;
+    if (!sameComparableValue(field, expected, candidate[field])) {
+      return { eligible: false, matchPercent: 0, reason: `${field} does not match` };
+    }
+    score += weight;
+  }
+
+  for (const [field, weight] of optionalFields) {
+    const expected = target[field];
+    const actual = candidate[field];
+    if (expected == null || expected === '' || actual == null || actual === '') {
+      continue;
+    }
+    availableWeight += weight;
+    if (sameComparableValue(field, expected, actual)) {
+      score += weight;
+    }
+  }
+
+  if (!availableWeight) {
+    return { eligible: false, matchPercent: 0, reason: 'not enough confirmed configuration data' };
+  }
+
+  const matchPercent = Math.round((score / availableWeight) * 100);
+  return {
+    eligible: matchPercent >= 80,
+    matchPercent,
+    reason: matchPercent >= 80 ? null : 'configuration similarity is below 80%',
+  };
+}
+
+function findLowerPricedNewComparable(snapshot, target, externalPrice) {
+  const competitorPrice = Number(externalPrice);
+  if (!Number.isFinite(competitorPrice) || competitorPrice <= 0) {
+    return null;
+  }
+
+  const candidates = (snapshot?.rows || [])
+    .filter((row) => row?.inventoryMatch?.condition === 'new')
+    .filter((row) => Number(row?.inventoryMatch?.currentPrice) < competitorPrice)
+    .map((row) => ({
+      row,
+      score: scoreNewVehicleComparable(target, row),
+    }))
+    .filter(({ score }) => score.eligible)
+    .sort((left, right) => {
+      const leftPrice = Number(left.row.inventoryMatch.currentPrice);
+      const rightPrice = Number(right.row.inventoryMatch.currentPrice);
+      if (leftPrice !== rightPrice) {
+        return leftPrice - rightPrice;
+      }
+      return right.score.matchPercent - left.score.matchPercent;
+    });
+
+  const best = candidates[0];
+  if (!best) {
+    return null;
+  }
+
+  return {
+    ...best.row,
+    comparison: {
+      matchPercent: best.score.matchPercent,
+      competitorPrice,
+      savings: competitorPrice - Number(best.row.inventoryMatch.currentPrice),
+    },
+  };
+}
+
 module.exports = {
   applyVerifiedCapacities,
   attachInventoryMatches,
@@ -1223,11 +1382,15 @@ module.exports = {
   extractMileage,
   findLowestPricedVerifiedInventory,
   filterVerifiedInventorySnapshot,
+  findLowerPricedNewComparable,
+  findVerifiedInventoryByVin,
   findBestInventoryMatch,
+  findPerkinsInventoryByVin,
   getMatchingPerkinsEngineFilters,
   inventoryMatchesCandidateProfile,
   INVENTORY_SNAPSHOT_VERSION,
   meetsTrailerRequirements,
   scoreInventoryMatch,
+  scoreNewVehicleComparable,
   sortVerifiedInventoryRows,
 };
