@@ -496,7 +496,11 @@ function buildVinCapacitySummary(spec, matches, kind) {
     return null;
   }
 
-  let candidateRows = matchList.filter((row) => sameMatchFamily(row, primary));
+  const unknown2027HemiVariant = spec.year === 2027
+    && spec.engine === '5.7L HEMI V8 eTorque' && !spec.engineVariant;
+  let candidateRows = matchList.filter((row) => unknown2027HemiVariant
+    ? sameMatchFamily({ ...row, engineVariant: null }, { ...primary, engineVariant: null })
+    : sameMatchFamily(row, primary));
   const trimCompatibleRows = candidateRows.filter((row) => {
     return row.trimFallback || !rowHasTrimConstraint(row) || !spec.trim || rowTrimMatches(row, spec.trim);
   });
@@ -557,7 +561,7 @@ function buildVinCapacitySummary(spec, matches, kind) {
   const values = Array.from(new Set(candidateRows.map((row) => row[capacityKey]).filter(Number.isFinite))).sort((a, b) => a - b);
   const axleValues = Array.from(new Set(candidateRows.map((row) => row.axleRatio).filter(Boolean)));
   const gvwrValues = Array.from(new Set(candidateRows.map((row) => row.gvwr).filter(Number.isFinite)));
-  const needsRange = values.length > 1 && (!spec.axleRatio || !resolvedGvwr);
+  const needsRange = values.length > 1 && (!spec.axleRatio || !resolvedGvwr || unknown2027HemiVariant);
 
   const summary = {
     isRange: needsRange,
@@ -580,6 +584,9 @@ function buildVinCapacitySummary(spec, matches, kind) {
   }
 
   const reasons = [];
+  if (unknown2027HemiVariant) {
+    reasons.push('HEMI eTorque or standard engine');
+  }
   if (primary.ramBoxFallback) {
     reasons.push('the RamBox-specific source-chart row');
   } else if (primary.trimFallback) {

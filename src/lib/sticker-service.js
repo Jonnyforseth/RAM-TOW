@@ -20,6 +20,7 @@ const VIN_MODEL_YEAR_MAP = {
   R: 2024,
   S: 2025,
   T: 2026,
+  V: 2027,
 };
 const STICKER_UNAVAILABLE_PATTERN = /unable to retrieve a window sticker for this vin/i;
 
@@ -436,7 +437,7 @@ function extractDetectedSpec(vin, stickerText, decoded, options = {}) {
     : infer2024ChartGvwr({ year, model, rearWheels }) || infer2025ChartGvwr({ year, model, engine, rearWheels, cab, bed, drive });
   const engineVariant = (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023 || year === 2024) && engine === '6.7L Cummins HO'
     ? detectDieselVariant(stickerText, decoded)
-    : (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023) && engine === '5.7L HEMI V8 eTorque'
+    : (year === 2019 || year === 2020 || year === 2021 || year === 2022 || year === 2023 || year === 2027) && engine === '5.7L HEMI V8 eTorque'
       ? detectHemiVariant(stickerText)
       : null;
   const spec = cleanSpec({
@@ -491,6 +492,10 @@ async function lookupVin(vinInput) {
 
   if (detectedSpec.model === 'Chassis Cab') {
     throw new Error('VIN Lookup supports RAM pickup trucks only. Chassis cab models are not supported.');
+  }
+
+  if (detectedSpec.year === 2027 && detectedSpec.model !== '1500') {
+    throw new Error('2027 chart coverage currently supports RAM 1500 pickups only. A 2027 chart is not loaded for this model.');
   }
 
   return {
