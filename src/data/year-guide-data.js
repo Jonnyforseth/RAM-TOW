@@ -6,6 +6,22 @@ function chartLink(path, label) {
 
 const YEARLINEUP_GUIDE_ARTICLES = [
   {
+    slug: '2027-ram-towing-capacity-guide',
+    title: '2027 RAM 1500 Towing Capacity and Payload Guide',
+    description: '2027 RAM 1500 VIN lookup is supported. Compare Pentastar, standard HEMI, HEMI eTorque, Hurricane SO, Limited and RHO chart ratings, axle ratios, and payload.',
+    lead: 'RAM Tow now supports 2027 RAM 1500 VIN lookups using the 2027 RAM payload and towing chart. Identify the engine, eTorque status, axle ratio, drivetrain, cab, bed, and trim to find the applicable rating. Current 2027 coverage is limited to the 1500; 2027 RAM 2500 and 3500 charts are not loaded.',
+    why: 'The 2027 RAM 1500 chart reaches up to 11,530 lb of towing with the Hurricane SO and up to 2,340 lb of payload with the Pentastar V6. These maxima describe different configurations and must not be combined into one truck rating.',
+    headline: '2027 RAM 1500: up to 11,530 lb towing | up to 2,340 lb chart payload',
+    sections: [
+      { heading: 'Standard HEMI and eTorque have separate ratings', paragraphs: ['The 2027 chart lists both the 5.7L HEMI V8 and the 5.7L HEMI V8 with eTorque. Their towing maxima are 11,470 lb and 11,370 lb respectively, for the listed Crew Cab short-bed 4x2 configurations with a 3.92 axle.', 'RAM Tow uses the window sticker to distinguish these engines. If eTorque status cannot be confirmed, the lookup preserves a range instead of choosing one engine variant.'] },
+      { heading: 'Match Hurricane, Pentastar, and RHO to the exact configuration', paragraphs: ['The Hurricane SO reaches 11,530 lb in the listed Quad Cab 4x2 configuration with a 3.92 axle. Pentastar V6 towing reaches 8,100 lb in the listed Quad Cab 4x2 configuration with a 3.55 axle. Crew Cab, bed length, drivetrain, and axle choices change those values.', 'The Hurricane HO chart separates Limited and RHO configurations. The listed Limited long-bed 4x4 reaches 9,480 lb towing, while the RHO short-bed 4x4 is listed at 8,370 lb towing and 1,530 lb chart payload.'] },
+      { heading: 'Verify payload and current coverage', paragraphs: ['Chart payload is a configuration reference. Use the actual truck door-jamb payload label to account for installed equipment, passengers, cargo, hitch equipment, and trailer tongue weight.', '2027 VIN lookup covers RAM 1500 pickups only. Earlier supported model years retain their own chart data. Trailer Match currently uses the complete 2026 light-duty and Heavy Duty chart set, so verify a 2027 candidate separately by VIN.'] },
+    ],
+    check: 'Enter the 2027 RAM 1500 VIN, confirm engine and eTorque status, axle ratio, drivetrain, cab, bed, and trim, then check the physical payload label and hitch ratings against the loaded trailer.',
+    referenceLinks: [{ url: '/charts/2027-ram-1500.pdf', label: 'Open the supplied RAM 2027 1500 payload and towing chart PDF' }],
+    model: '1500',
+  },
+  {
     slug: '2019-ram-towing-capacity-guide',
     title: '2019 RAM 1500, 2500, and 3500 Towing Capacity Guide',
     description: 'A detailed 2019 RAM towing guide covering 1500 DT versus 1500 Classic, 2500 gas and Cummins configurations, 3500 SRW or dually choices, model-year chart maxima, payload, and VIN verification.',

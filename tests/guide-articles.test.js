@@ -21,18 +21,19 @@ test('includes substantive VIN and configuration guides for 2019 through 2022 RA
 });
 
 test('publishes a detailed model-year towing guide with official chart references for every supported year', () => {
-  const yearGuides = GUIDE_ARTICLES.filter((article) => /^20(19|20|21|22|23|24|25|26)-ram-towing-capacity-guide$/.test(article.slug));
+  const { SUPPORTED_CHART_YEARS } = require('../src/data/chart-data');
+  const yearGuides = GUIDE_ARTICLES.filter((article) => /^20\d{2}-ram-towing-capacity-guide$/.test(article.slug));
 
-  assert.equal(yearGuides.length, 8, 'one year-overview guide exists for every supported chart year');
+  assert.deepEqual(yearGuides.map(article => Number(article.slug.slice(0, 4))).sort(), SUPPORTED_CHART_YEARS, 'one year-overview guide exists for every supported chart year');
 
   for (const article of yearGuides) {
     const year = Number(article.slug.slice(0, 4));
-    const expectedSources = year <= 2022 ? 4 : 2;
+    const expectedSources = year === 2027 ? 1 : year <= 2022 ? 4 : 2;
 
     assert.ok(article.headline.includes('RAM 1500'), `${article.slug} includes year-specific lineup headline numbers`);
     assert.ok(article.sections.length >= 3, `${article.slug} has a detailed answer`);
     assert.equal(article.referenceLinks.length, expectedSources, `${article.slug} includes the appropriate model-family chart sources`);
-    assert.ok(article.referenceLinks.every((link) => link.url.startsWith('https://www.ramtrucks.com/') && link.url.endsWith('.pdf')), `${article.slug} only links to direct official RAM chart PDFs`);
+    assert.ok(article.referenceLinks.every((link) => (link.url.startsWith('https://www.ramtrucks.com/') || link.url === '/charts/2027-ram-1500.pdf') && link.url.endsWith('.pdf')), `${article.slug} links to RAM chart PDFs`);
 
     if (year <= 2022) {
       const labels = article.referenceLinks.map((link) => link.label).join(' ');

@@ -9,6 +9,10 @@ const buildDate = new Date().toISOString().slice(0, 10);
 const reviewerName = 'Jonny Forseth';
 const reviewerTitle = 'Internet Sales, Perkins Motors';
 
+// Publish the exact source chart alongside its guide; no external URL guesswork.
+fs.mkdirSync(path.join(publicDirectory, 'charts'), { recursive: true });
+fs.copyFileSync(path.join(projectRoot, 'samples/2027-1500-chart.pdf'), path.join(publicDirectory, 'charts/2027-ram-1500.pdf'));
+
 const inventoryUrls = {
   '1500': 'https://perkinsmotors.com/advanced-search?condition=new&make=Ram&model=1500&utm_source=ramtow.com&utm_medium=referral&utm_campaign=towing_guide',
   '2500': 'https://perkinsmotors.com/advanced-search?condition=new&make=Ram&model=2500&utm_source=ramtow.com&utm_medium=referral&utm_campaign=towing_guide',

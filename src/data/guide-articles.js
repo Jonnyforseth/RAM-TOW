@@ -596,7 +596,7 @@ const CORE_GUIDE_ARTICLES = [
       {
         heading: "Why this matters when shopping used or new",
         paragraphs: [
-          "A 2024 RAM 1500 uses the 2024 chart and its available engines. A 2025 or 2026 truck must be checked against the corresponding chart because cab, drivetrain, axle ratio, trim, and engine choices changed.",
+          "A 2024 RAM 1500 uses the 2024 chart and its available engines. A 2025, 2026, or 2027 RAM 1500 must be checked against the corresponding chart because cab, drivetrain, axle ratio, trim, and engine choices changed.",
           "The VIN's model-year character is useful, but the window sticker and VIN Lookup provide the configuration details needed to select a chart row. Never use an online listing's generic engine description as the final source.",
         ],
       },
@@ -604,7 +604,7 @@ const CORE_GUIDE_ARTICLES = [
         heading: "The 2026 lineup adds another decision",
         paragraphs: [
           "For 2026, RAM offers the 3.6L Pentastar V6, Standard-Output Hurricane, High-Output Hurricane, and a newly available 5.7L HEMI V8 on select RAM 1500 models. The engine, trim, and configuration all affect the actual tow and payload result.",
-          "Use the year first, then identify the exact engine and configuration. RAM Tow supports 2019 and newer RAM pickup trucks and compares the VIN details to the applicable chart set.",
+          "Use the year first, then identify the exact engine and configuration. RAM Tow supports 2019 through 2026 RAM pickups and 2027 RAM 1500 pickups, and compares the VIN details to the applicable chart set.",
         ],
       },
     ],
