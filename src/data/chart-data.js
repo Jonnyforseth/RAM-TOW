@@ -36,13 +36,18 @@ const {
   LIGHT_DUTY_TOW_ROWS_2020,
 } = require('./chart-year-2020');
 
+const { LIGHT_DUTY_TOW_ROWS_2027, LIGHT_DUTY_PAYLOAD_ROWS_2027 } = require('./chart-year-2027');
+// Keep trailer-fit defaults on the latest complete light-duty + HD chart set.
 const DEFAULT_CHART_YEAR = 2026;
-// Add a model year here, its two source PDFs, and its row data to extend support.
-const SUPPORTED_CHART_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+// A year may have only light-duty coverage; never borrow HD rows across years.
+const SUPPORTED_CHART_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027];
 const CLASSIC_ROWS_2023 = buildClassicRows(2023);
 const CLASSIC_ROWS_2024 = buildClassicRows(2024);
 
 const PDF_PATHS_BY_YEAR = {
+  2027: {
+    ram1500: 'samples/2027-1500-chart.pdf',
+  },
   2019: {
     ram1500: [
       'C:/Users/Jonat/Downloads/Ram_LD_DT_Trailer_Tow_Weight_Chart_MY19.pdf',
@@ -466,6 +471,11 @@ const GOOSENECK_REQUIRED_OVER = {
 };
 
 const CHART_DATA_BY_YEAR = {
+  2027: {
+    pdfPaths: PDF_PATHS_BY_YEAR[2027],
+    towRows: LIGHT_DUTY_TOW_ROWS_2027,
+    payloadRows: LIGHT_DUTY_PAYLOAD_ROWS_2027,
+  },
   2019: {
     pdfPaths: PDF_PATHS_BY_YEAR[2019],
     towRows: [...LIGHT_DUTY_TOW_ROWS_2019, ...HD_TOW_ROWS_2019],
